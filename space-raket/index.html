@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="fi"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#24324c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Space Raket</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* Eddan suunnittelema peli. Värit Eddan omasta väripaletista. */
+:root{--pink:#e44497;--coral:#ee6c63;--green:#35d482;--blush:#f1d0d6;--space:#24324c;--ink:#141b2b;--gold:#ffd23f;
+  --display:"Bungee","Arial Black",Impact,sans-serif;--body:"Atkinson Hyperlegible",system-ui,sans-serif}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--space);color:var(--blush);font-family:var(--body);overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px 16px;text-align:center;background:rgba(20,27,43,.72);overflow:auto}
+.screen[hidden],[hidden]{display:none!important}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(38px,9vw,78px);line-height:.95;margin:0;color:var(--pink);-webkit-text-stroke:2px var(--ink);paint-order:stroke fill;text-shadow:0 5px 0 var(--ink)}
+h1 span{color:var(--green)}
+h2{font-family:var(--display);font-weight:400;font-size:clamp(28px,6vw,46px);margin:0;color:var(--gold);text-shadow:0 4px 0 var(--ink)}
+p{margin:0;font-size:18px;max-width:34em}
+.credit{font-size:15px;opacity:.85}
+.btn{font-family:var(--display);font-size:20px;color:var(--ink);background:var(--green);border:4px solid var(--ink);border-radius:999px;padding:.45em 1.3em;box-shadow:0 5px 0 var(--ink);cursor:pointer;touch-action:manipulation}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--ink)}
+.btn.pink{background:var(--pink);color:#fff}
+.btn.small{font-size:15px;padding:.35em 1em;background:var(--blush)}
+.levels{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;width:min(520px,100%)}
+.lv{position:relative;font-family:var(--display);font-size:24px;aspect-ratio:1;border:4px solid var(--ink);border-radius:50%;background:var(--blush);color:var(--ink);cursor:pointer;box-shadow:0 4px 0 var(--ink);padding:0;touch-action:manipulation}
+.lv.done{background:var(--gold)}
+.lv:disabled{background:#4a5672;color:#8590ab;cursor:default;box-shadow:none}
+.lv small{position:absolute;left:0;right:0;bottom:-2px;font-family:var(--body);font-size:11px;font-weight:700}
+.howto{font-size:16px;opacity:.9;max-width:30em}
+.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.hud{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;gap:10px;padding:10px 12px;padding-top:max(10px,env(safe-area-inset-top));pointer-events:none;font-family:var(--display);font-size:18px;text-shadow:0 2px 0 var(--ink)}
+.hud .pill{background:rgba(20,27,43,.6);border:2px solid var(--blush);border-radius:999px;padding:.15em .8em;white-space:nowrap}
+.hud .bar{flex:1;height:12px;border:2px solid var(--blush);border-radius:999px;overflow:hidden;background:rgba(20,27,43,.6);min-width:40px}
+.hud .bar i{display:block;height:100%;width:0;background:var(--green)}
+.hud button{pointer-events:auto;font:inherit;font-size:16px;color:var(--ink);background:var(--blush);border:3px solid var(--ink);border-radius:999px;width:40px;height:40px;cursor:pointer;padding:0}
+.combo{color:var(--gold)}
+#ears{position:fixed;left:16px;bottom:max(16px,env(safe-area-inset-bottom));width:120px;height:120px;border-radius:50%;border:5px solid var(--ink);background:var(--gold);font-family:var(--display);font-size:15px;color:var(--ink);box-shadow:0 6px 0 var(--ink);touch-action:none;line-height:1.1}
+#ears.on{background:var(--green);transform:translateY(4px);box-shadow:0 2px 0 var(--ink)}
+#ears.alarm{animation:alarm .3s infinite alternate}
+@keyframes alarm{to{background:var(--coral)}}
+.badge{width:110px;height:110px;border-radius:50%;background:var(--gold);border:6px solid var(--ink);display:grid;place-items:center;font-family:var(--display);font-size:46px;color:var(--ink);box-shadow:0 0 0 6px var(--pink),0 8px 0 6px var(--ink)}
+.rotate{font-size:14px;opacity:.8}
+</style></head>
+<body>
+<canvas id="cv"></canvas>
+
+<div class="hud" id="hud" hidden>
+  <span class="pill" id="hLv">Level 1</span>
+  <span class="pill" id="hScore">0</span>
+  <span class="pill combo" id="hCombo" hidden>x2</span>
+  <div class="bar"><i id="hBar"></i></div>
+  <button id="bMute" aria-label="Äänet päälle tai pois">♪</button>
+  <button id="bPause" aria-label="Tauko">II</button>
+</div>
+<button id="ears" hidden>Korvat kiinni!</button>
+
+<section class="screen" id="sMenu">
+  <h1>Space <span>Raket</span></h1>
+  <p class="credit">Edda suunnitteli tämän pelin</p>
+  <p class="howto"><b>Paina ja pidä pohjassa</b>, niin raketti nousee. Päästä irti, niin se laskee. Väistele planeettoja ja kerää pisteitä ja tähtiä! Jos et ohjaa, Pikku Pörrö putoaa.</p>
+  <div class="levels" id="levels"></div>
+  <p class="howto" id="total"></p>
+  <p class="rotate" id="rot" hidden>Vinkki: käännä puhelin vaakatasoon, niin näet enemmän.</p>
+</section>
+
+<section class="screen" id="sIntro" hidden>
+  <h2 id="iTitle">Level 1</h2>
+  <p id="iText"></p>
+  <button class="btn" id="bGo">Lähde!</button>
+</section>
+
+<section class="screen" id="sDead" hidden>
+  <h2 id="dTitle">BOING!</h2>
+  <p id="dText"></p>
+  <div class="row"><button class="btn" id="bRetry">Yritä uudestaan</button><button class="btn small" data-menu>Levelit</button></div>
+</section>
+
+<section class="screen" id="sDone" hidden>
+  <h2>Level läpi!</h2>
+  <div class="badge" id="badge">1</div>
+  <p>Sait levelinapin!</p>
+  <p id="doneText"></p>
+  <div class="row"><button class="btn" id="bNext">Seuraava level</button><button class="btn small" data-menu>Levelit</button></div>
+</section>
+
+<section class="screen" id="sWin" hidden>
+  <h1>Voitit<br><span>pelin!</span></h1>
+  <p>Pikku Pörrö lensi kaikki 10 leveliä ja selvisi lohikäärmeistäkin!</p>
+  <p id="winText"></p>
+  <button class="btn" data-menu>Levelit</button>
+</section>
+
+<section class="screen" id="sPause" hidden>
+  <h2>Tauko</h2>
+  <div class="row"><button class="btn" id="bResume">Jatka</button><button class="btn small" data-menu>Levelit</button></div>
+</section>
+
+<script>
+'use strict';
+/* ========== Eddan hahmo: Pikku Pörrö (Eddan oma piirros) ========== */
+const PORRO_PIX=".,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,#000000,#000000,#000000,.,#000000,#000000,#000000,.,.,.,.,.,.,.,.,#000000,#000000,#a8714a,#000000,#000000,#000000,#a8714a,#000000,#000000,#000000,.,.,.,.,.,.,#000000,#a8714a,#a8714a,#a8714a,#a8714a,#a8714a,#a8714a,#a8714a,#a8714a,#000000,.,.,.,.,.,.,#000000,#a8714a,#000000,#a8714a,#a8714a,#a8714a,#a8714a,#000000,#a8714a,#000000,.,.,.,.,.,.,#000000,#a8714a,#a8714a,#a8714a,#000000,#000000,#a8714a,#a8714a,#a8714a,#000000,.,.,.,.,.,.,#000000,#a8714a,#a8714a,#a8714a,#a8714a,#a8714a,#a8714a,#a8714a,#a8714a,#000000,.,.,.,.,.,.,#000000,#000000,#000000,#000000,#000000,#000000,#000000,#000000,#000000,#000000,.,.,.,.,.,.,.,.,#000000,#000000,.,#000000,#000000,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.".split(',');
+const porro=document.createElement('canvas');porro.width=porro.height=16;
+let PB={x0:16,y0:16,x1:0,y1:0};
+{const x=porro.getContext('2d');PORRO_PIX.forEach((c,i)=>{if(c!=='.'){x.fillStyle=c;x.fillRect(i%16,i>>4,1,1);const px=i%16,py=i>>4;PB.x0=Math.min(PB.x0,px);PB.y0=Math.min(PB.y0,py);PB.x1=Math.max(PB.x1,px+1);PB.y1=Math.max(PB.y1,py+1)}})}
+
+const C={pink:'#e44497',coral:'#ee6c63',green:'#35d482',blush:'#f1d0d6',space:'#24324c',ink:'#141b2b',gold:'#ffd23f'};
+const PLANET_COLS=['#e44497','#ee6c63','#35d482','#f1d0d6','#8f7cf2','#4fb6e8','#f29f4b'];
+
+/* ========== levelit Eddan suunnitelman mukaan ========== */
+const LV=[
+ {speed:140,time:38,planetGap:430,pr:30,text:'Pörrö lentää tosi hiljaa, niin on helppo väistellä.'},
+ {speed:195,time:38,planetGap:400,pr:34,text:'Nyt raketti lentää nopeammin!'},
+ {speed:195,time:42,planetGap:290,pr:38,belts:1,suns:1,text:'Lisää planeettoja ja asteroidivyöhyke! Varo myös aurinkoa.'},
+ {speed:235,time:42,planetGap:290,pr:38,belts:2,suns:1,text:'Nopeampi vauhti, paljon planeettoja ja asteroideja.'},
+ {speed:215,time:44,planetGap:330,pr:34,moving:1,moons:1,suns:1,text:'Planeetat ja isot kuut lentävät ylös ja alas!'},
+ {speed:210,time:44,planetGap:520,pr:30,donuts:1,text:'Lennä donitsien läpi! Niiden ohi ei pääse.'},
+ {speed:205,time:44,planetGap:600,pr:28,cages:1,text:'Häkit sulkeutuvat joka sekunti. Odota että häkki aukeaa!'},
+ {speed:305,time:40,planetGap:300,pr:36,belts:2,suns:1,text:'Vielä nopeammin!'},
+ {speed:225,time:46,planetGap:380,pr:34,noise:1,text:'Tulee tosi kovaa ääntä! Kun näet varoituksen, pidä Korvat kiinni -nappia pohjassa (tietokoneella K-näppäin).'},
+ {speed:220,time:50,planetGap:460,pr:32,dragons:1,suns:1,text:'Lohikäärmeet puhaltavat tulta! Kun ne savuttavat, väistä.'}
+];
+
+/* ========== tallennus ========== */
+let save={unlocked:1,best:{}};
+try{const s=JSON.parse(localStorage.getItem('spaceraket')||'null');if(s&&s.unlocked)save=s}catch(_){}
+function store(){try{localStorage.setItem('spaceraket',JSON.stringify(save))}catch(_){}}
+
+/* ========== äänet ========== */
+let AC=null,master=null,engine=null,engineGain=null,muted=false,noiseNode=null,noiseGain=null,noiseFilter=null;
+function audio(){
+  if(AC){if(AC.state==='suspended')AC.resume();return}
+  try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(_){return}
+  master=AC.createGain();master.gain.value=muted?0:.8;master.connect(AC.destination);
+  const buf=AC.createBuffer(1,AC.sampleRate*2,AC.sampleRate),d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+  engine=AC.createBufferSource();engine.buffer=buf;engine.loop=true;
+  const f=AC.createBiquadFilter();f.type='lowpass';f.frequency.value=380;
+  engineGain=AC.createGain();engineGain.gain.value=0;engine.connect(f).connect(engineGain).connect(master);engine.start();
+  // kova ääni (level 9)
+  noiseNode=AC.createBufferSource();noiseNode.buffer=buf;noiseNode.loop=true;
+  noiseFilter=AC.createBiquadFilter();noiseFilter.type='lowpass';noiseFilter.frequency.value=4000;
+  noiseGain=AC.createGain();noiseGain.gain.value=0;noiseNode.connect(noiseFilter).connect(noiseGain).connect(master);noiseNode.start();
+}
+function tone(freq,dur,type,vol,when,slideTo){
+  if(!AC)return;const t=AC.currentTime+(when||0);const o=AC.createOscillator(),g=AC.createGain();
+  o.type=type||'square';o.frequency.setValueAtTime(freq,t);if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,t+dur);
+  g.gain.setValueAtTime(vol||.15,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g).connect(master);o.start(t);o.stop(t+dur+.02);
+}
+const SFX={
+  coin(){tone(988,.07,'square',.12);tone(1480,.18,'square',.12,.06)},
+  star(){[784,988,1175,1568].forEach((f,i)=>tone(f,.12,'triangle',.16,i*.06))},
+  donut(){[523,659,784].forEach((f,i)=>tone(f,.15,'triangle',.18,i*.07))},
+  boing(){if(!AC)return;const t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain(),l=AC.createOscillator(),lg=AC.createGain();
+    o.type='sine';o.frequency.setValueAtTime(420,t);o.frequency.exponentialRampToValueAtTime(90,t+.6);
+    l.frequency.value=18;lg.gain.value=60;l.connect(lg).connect(o.frequency);
+    g.gain.setValueAtTime(.4,t);g.gain.exponentialRampToValueAtTime(.001,t+.7);o.connect(g).connect(master);o.start(t);l.start(t);o.stop(t+.72);l.stop(t+.72)},
+  level(){[523,659,784,1047,784,1047].forEach((f,i)=>tone(f,.2,'square',.13,i*.11))},
+  win(){[523,659,784,1047,1319,1568,2093].forEach((f,i)=>tone(f,.3,'triangle',.18,i*.12))},
+  warn(){tone(660,.15,'square',.12);tone(660,.15,'square',.12,.25)},
+  fire(){if(!AC)return;tone(110,.6,'sawtooth',.12,0,55)},
+  go(){tone(392,.12,'square',.12);tone(523,.12,'square',.12,.14);tone(784,.25,'square',.14,.28)}
+};
+
+/* ========== piirtoalue ========== */
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+let W=0,H=0,DPR=1,S=1,VW=700,OY=0;const VH=600;
+function resize(){DPR=Math.min(2,window.devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;
+  S=Math.min(H/VH,W/700);VW=W/S;OY=(H-VH*S)/2;$('rot').hidden=!(H>W&&W<700)}
+const $=id=>document.getElementById(id);
+addEventListener('resize',resize);
+
+/* tähtitaivas: kauko kauko kaukana olevia tähtiä */
+const sky=[];for(let i=0;i<220;i++)sky.push({x:Math.random()*2400,y:Math.random()*VH,z:.08+Math.random()*.35,r:Math.random()*1.6+.3,tw:Math.random()*6});
+
+/* ========== pelin tila ========== */
+let mode='menu',lvl=1,objs=[],L=0,cam=0,R=null,score=0,levelScore=0,maxPts=0,tAll=0,tLevel=0,combo=0,comboT=0,
+    thrust=false,ears=false,parts=[],floats=[],noiseState=null,shake=0,startDelay=0,lastT=0;
+const thrustPtr=new Set();
+
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+function build(n){
+  const P=LV[n-1],r=rng(n*977+13);objs=[];L=P.speed*P.time;
+  const obst=[];
+  const free=(x,y,rad,m)=>obst.every(o=>{
+    if(o.t==='donut'||o.t==='cage'||o.t==='dragon')return Math.abs(o.x-x)>(m||60)+80;
+    const oy=o.y0!==undefined?o.y0:o.y,amp=o.amp||0;
+    const dx=o.x-x,dy=Math.max(0,Math.abs(oy-y)-amp);return Math.hypot(dx,dy)>o.r+rad+(m||60)});
+  const add=o=>{objs.push(o);obst.push(o)};
+  // aurinko
+  for(let i=0;i<(P.suns||0);i++){const x=L*(.45+i*.3)+r()*200,top=r()<.5;add({t:'sun',x,y:top?-70:VH+70,r:150})}
+  // donitsit + asteroidiseinät
+  if(P.donuts)for(let x=800;x<L-300;x+=560+r()*120){const y=170+r()*260,R2=78;add({t:'donut',x,y,R:R2,passed:false});
+    for(let yy=y-R2-34;yy>-20;yy-=34)objs.push({t:'rock',x:x+(r()-.5)*10,y:yy,r:15,rot:r()*6});
+    for(let yy=y+R2+34;yy<VH+20;yy+=34)objs.push({t:'rock',x:x+(r()-.5)*10,y:yy,r:15,rot:r()*6})}
+  // häkit
+  if(P.cages)for(let x=800;x<L-300;x+=500+r()*140){add({t:'cage',x,gy:140+r()*320,gap:200,ph:r()*2})}
+  // lohikäärmeet
+  if(P.dragons)for(let x=900;x<L-300;x+=640+r()*160){add({t:'dragon',x,y0:150+r()*300,y:0,ph:r()*3,amp:40})}
+  // asteroidivyöhykkeet
+  for(let b=0;b<(P.belts||0);b++){
+    const x0=L*(.25+b*.4)+r()*150,len=800,ph=r()*6;
+    for(let x=x0;x<x0+len;x+=26){const cy=VH/2+Math.sin(x/170+ph)*150;
+      for(let k=0;k<2;k++){const y=r()*VH;if(Math.abs(y-cy)>105&&free(x,y,12,8))add({t:'rock',x:x+r()*14,y,r:9+r()*10,rot:r()*6,belt:1})}}
+    obst.push({t:'zone',x:x0+len/2,y:VH/2,r:len/2-40})
+  }
+  // planeetat
+  for(let x=650;x<L-250;x+=P.planetGap*(.7+r()*.6)){
+    for(let k=0;k<6;k++){const rad=26+r()*P.pr,y=50+r()*(VH-100),mov=P.moving&&r()<.7;
+      const amp=mov?50+r()*90:0;
+      if(free(x,y,rad,mov?70:55)){add({t:'planet',x,y0:y,y,r:rad,col:PLANET_COLS[(r()*PLANET_COLS.length)|0],ring:r()<.3,amp,w:.6+r()*.9,ph:r()*6,spots:[r(),r(),r()]});break}}
+  }
+  if(P.moons)for(let x=900;x<L-300;x+=900+r()*300){const y=150+r()*300;if(free(x,y,85,40))add({t:'moon',x,y0:y,y,r:72+r()*16,amp:110,w:.5+r()*.3,ph:r()*6})}
+  // pisteet ja tähdet
+  maxPts=0;let i=0;const ph=r()*6;
+  for(let x=480;x<L-150;x+=95){
+    let y=VH/2+Math.sin(x/240+ph)*190;
+    const d=objs.find(o=>o.t==='donut'&&Math.abs(o.x-x)<60);if(d)y=d.y;
+    const c=objs.find(o=>o.t==='cage'&&Math.abs(o.x-x)<60);if(c)y=c.gy;
+    const ok=d||c||obst.every(o=>{if(o.t==='zone')return true;if(o.t==='cage'||o.t==='dragon'||o.t==='donut')return Math.abs(o.x-x)>120;
+      const oy=o.y0!==undefined?o.y0:o.y;return Math.hypot(o.x-x,Math.max(0,Math.abs(oy-y)-(o.amp||0)))>o.r+30});
+    if(!ok)continue;
+    const star=(++i%9===0);objs.push({t:star?'star':'coin',x,y,r:star?16:10,got:false});maxPts+=star?5:1;
+  }
+  objs.push({t:'finish',x:L});
+  objs.sort((a,b)=>a.x-b.x);
+}
+
+function startLevel(n){
+  lvl=n;build(n);cam=0;levelScore=0;combo=0;comboT=0;parts=[];floats=[];noiseState=null;shake=0;
+  R={x:0,y:VH/2,vy:0,dead:false,trail:0};tLevel=0;startDelay=1.4;thrust=false;ears=false;thrustPtr.clear();
+  $('hLv').textContent='Level '+n;$('ears').hidden=!LV[n-1].noise;$('ears').classList.remove('on','alarm');
+  show(null);$('hud').hidden=false;mode='play';audio();SFX.go();
+}
+function show(id){['sMenu','sIntro','sDead','sDone','sWin','sPause'].forEach(s=>$(s).hidden=s!==id)}
+function intro(n){lvl=n;$('iTitle').textContent='Level '+n;$('iText').textContent=LV[n-1].text;show('sIntro');mode='intro';$('hud').hidden=true;$('ears').hidden=true}
+function menu(){
+  mode='menu';$('hud').hidden=true;$('ears').hidden=true;show('sMenu');if(engineGain)engineGain.gain.value=0;if(noiseGain)noiseGain.gain.value=0;
+  const box=$('levels');box.innerHTML='';let tot=0,badges=0;
+  for(let n=1;n<=10;n++){const b=document.createElement('button');b.className='lv';b.textContent=n;const best=save.best[n];
+    if(best!==undefined){b.classList.add('done');badges++;tot+=best;const s=document.createElement('small');s.textContent=best+' p';b.appendChild(s)}
+    b.disabled=n>save.unlocked;b.setAttribute('aria-label','Level '+n);b.onclick=()=>{audio();intro(n)};box.appendChild(b)}
+  $('total').textContent=badges?('Levelinappeja '+badges+'/10 · parhaat pisteet yhteensä '+tot):'';
+}
+
+function die(why){
+  if(R.dead)return;R.dead=true;mode='dead';SFX.boing();shake=14;if(engineGain)engineGain.gain.value=0;if(noiseGain)noiseGain.gain.value=0;
+  burst(R.x,R.y,C.coral,30);burst(R.x,R.y,C.gold,20);
+  const T={planet:['BOING!','Pörrö törmäsi planeettaan.'],rock:['BOING!','Pörrö osui asteroidiin.'],moon:['BOING!','Pörrö törmäsi kuuhun.'],
+    sun:['KUUMAA!','Pörrö lensi liian lähelle aurinkoa.'],fall:['VOI EI!','Pörrö putosi. Muista ohjata!'],donut:['BOING!','Pörrö osui donitsiin. Lennä keskeltä läpi!'],
+    cage:['KLONK!','Häkki sulkeutui. Odota että se aukeaa!'],noise:['AUTS!','Liian kova ääni! Pidä korvat kiinni, kun varoitus tulee.'],
+    dragon:['POLTTAA!','Lohikäärmeen tuli osui. Väistä kun se savuttaa!']}[why]||['BOING!',''];
+  $('dTitle').textContent=T[0];$('dText').textContent=T[1]+' Aloitat tämän levelin alusta.';
+  setTimeout(()=>{if(mode==='dead')show('sDead')},900);
+}
+function finish(){
+  mode='done';SFX.level();if(engineGain)engineGain.gain.value=0;if(noiseGain)noiseGain.gain.value=0;
+  levelScore+=10;
+  const prev=save.best[lvl];if(prev===undefined||levelScore>prev)save.best[lvl]=levelScore;
+  save.unlocked=Math.max(save.unlocked,Math.min(10,lvl+1));store();
+  for(let i=0;i<6;i++)burst(R.x+80,50+Math.random()*500,PLANET_COLS[i],20);
+  if(lvl===10){setTimeout(()=>{SFX.win();const tot=Object.values(save.best).reduce((a,b)=>a+b,0);$('winText').textContent='Kaikkien levelien parhaat pisteet yhteensä: '+tot;show('sWin');$('hud').hidden=true;$('ears').hidden=true;mode='win'},900);return}
+  $('badge').textContent=lvl;$('doneText').textContent='Pisteet: '+levelScore+' (keräsit '+(levelScore-10)+' / '+maxPts+' pisteestä, +10 levelistä)';
+  setTimeout(()=>{show('sDone');$('ears').hidden=true},700);
+}
+
+function burst(x,y,col,n){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=60+Math.random()*260;parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.6+Math.random()*.6,col,r:2+Math.random()*4})}}
+function floatTxt(x,y,txt,col){floats.push({x,y,txt,col:col||C.gold,life:1})}
+function addPts(p,x,y,label){
+  combo=comboT>0?Math.min(5,combo+1):1;comboT=1.6;const g=p*combo;levelScore+=g;floatTxt(x,y,(label||'+')+g+(combo>1?'  x'+combo:''))}
+
+/* ========== päivitys ========== */
+function update(dt){
+  tAll+=dt;
+  for(const p of parts){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=200*dt;p.life-=dt}parts=parts.filter(p=>p.life>0);
+  for(const f of floats){f.y-=40*dt;f.life-=dt}floats=floats.filter(f=>f.life>0);
+  if(shake>0)shake=Math.max(0,shake-dt*30);
+  if(mode!=='play')return;
+  const P=LV[lvl-1];tLevel+=dt;
+  // liikkuvat asiat
+  for(const o of objs){
+    if((o.t==='planet'||o.t==='moon')&&o.amp)o.y=o.y0+Math.sin(tLevel*o.w+o.ph)*o.amp;
+    if(o.t==='dragon'){o.y=o.y0+Math.sin(tLevel*1.3+o.ph)*o.amp;const c=(tLevel+o.ph)%3;
+      const st=c<1.3?'idle':c<2?'smoke':'fire';if(st==='fire'&&o.st!=='fire'&&Math.abs(o.x-R.x)<VW)SFX.fire();o.st=st;o.ft=c}
+  }
+  if(startDelay>0){startDelay-=dt;R.y+=Math.sin(tLevel*5)*.4;return}
+  // ohjaus
+  const up=thrust;
+  R.vy+=(up?-900:620)*dt;R.vy=Math.max(-420,Math.min(460,R.vy));R.y+=R.vy*dt;R.x+=P.speed*dt;
+  if(engineGain)engineGain.gain.setTargetAtTime(up?.16:.04,AC.currentTime,.05);
+  if(up&&Math.random()<.9)parts.push({x:R.x-30,y:R.y+4,vx:-P.speed*.4-80*Math.random(),vy:(Math.random()-.5)*60+100,life:.35,col:Math.random()<.5?C.gold:C.coral,r:3+Math.random()*3});
+  if(R.y<24){R.y=24;R.vy=Math.max(0,R.vy)}
+  if(R.y>VH+10)return die('fall');
+  cam=R.x-Math.min(190,VW*.27);
+  if(comboT>0)comboT-=dt;else combo=0;
+  // kova ääni (level 9)
+  if(P.noise){
+    const per=6.5,c=(tLevel-3)%per;const eb=$('ears');
+    let st=tLevel<3?'off':c<1.6?'warn':c<3.4?'loud':'off';
+    if(st!==noiseState){if(st==='warn')SFX.warn();noiseState=st;eb.classList.toggle('alarm',st==='warn'||st==='loud')}
+    if(noiseGain){noiseGain.gain.setTargetAtTime(st==='loud'?(ears?.05:.28):0,AC.currentTime,.03);noiseFilter.frequency.setTargetAtTime(ears?250:3500,AC.currentTime,.03)}
+    if(st==='loud'){shake=Math.max(shake,ears?2:7);if(!ears&&c>1.85)return die('noise')}
+  }
+  // osumat
+  const hr=17;
+  for(const o of objs){
+    if(o.x<R.x-260)continue;if(o.x>R.x+260)break;
+    if(o.t==='coin'||o.t==='star'){if(!o.got&&Math.hypot(o.x-R.x,o.y-R.y)<o.r+24){o.got=true;
+      if(o.t==='star'){SFX.star();addPts(5,o.x,o.y);burst(o.x,o.y,C.gold,14)}else{SFX.coin();addPts(1,o.x,o.y);burst(o.x,o.y,C.gold,5)}}continue}
+    if(o.t==='planet'||o.t==='rock'||o.t==='moon'){if(Math.hypot(o.x-R.x,o.y-R.y)<o.r+hr-3)return die(o.t);continue}
+    if(o.t==='sun'){if(Math.hypot(o.x-R.x,o.y-R.y)<o.r+hr+12)return die('sun');continue}
+    if(o.t==='donut'){if(Math.abs(o.x-R.x)<22){if(Math.abs(R.y-o.y)>o.R-20)return die('donut')}
+      if(!o.passed&&R.x>o.x+10){o.passed=true;SFX.donut();addPts(3,o.x,o.y,'Donitsi! +');burst(o.x,o.y,C.pink,16)}continue}
+    if(o.t==='cage'){const cl=cageClose(o);if(Math.abs(o.x-R.x)<26){const half=o.gap/2*(1-cl);if(Math.abs(R.y-o.gy)>half-hr+4)return die('cage')}continue}
+    if(o.t==='dragon'){if(Math.hypot(o.x-R.x,o.y-R.y)<48+hr)return die('dragon');
+      if(o.st==='fire'){const len=Math.min(1,(o.ft-2)*4)*290;if(R.x<o.x-30&&R.x>o.x-30-len&&Math.abs(R.y-(o.y+6))<40)return die('dragon')}continue}
+    if(o.t==='finish'&&R.x>=o.x)return finish();
+  }
+  $('hScore').textContent='★ '+levelScore;$('hBar').style.width=Math.min(100,R.x/L*100)+'%';
+  const hc=$('hCombo');hc.hidden=combo<2;hc.textContent='x'+combo;
+}
+function cageClose(o){const c=(tLevel+o.ph)%2;if(c<1)return 0;if(c<1.2)return (c-1)/.2;if(c<1.8)return 1;return 1-(c-1.8)/.2}
+
+/* ========== piirto ========== */
+function shade(hex,k){const n=parseInt(hex.slice(1),16);let r=n>>16,g=n>>8&255,b=n&255;
+  const f=v=>Math.max(0,Math.min(255,Math.round(k<0?v*(1+k):v+(255-v)*k)));return'rgb('+f(r)+','+f(g)+','+f(b)+')'}
+function draw(){
+  ctx.setTransform(DPR,0,0,DPR,0,0);ctx.fillStyle=C.space;ctx.fillRect(0,0,W,H);
+  const sx=shake?(Math.random()-.5)*shake:0,sy=shake?(Math.random()-.5)*shake:0;
+  ctx.setTransform(DPR*S,0,0,DPR*S,sx*DPR,(OY+sy)*DPR);
+  // kauko kauko kaukana tähdet
+  const cx=mode==='menu'||mode==='intro'?tAll*60:cam;
+  for(const s of sky){const x=((s.x-cx*s.z)%2400+2400)%2400;if(x>VW)continue;ctx.globalAlpha=.4+.6*Math.abs(Math.sin(tAll*1.3+s.tw));ctx.fillStyle='#fff';ctx.fillRect(x,s.y,s.r,s.r)}
+  ctx.globalAlpha=1;
+  if(mode==='menu'||mode==='intro'){const mx=((tAll*120)%(VW+300))-150;drawRocket(mx,VH-55+Math.sin(tAll*2)*12,Math.sin(tAll*2)*.12,true);return}
+  ctx.save();ctx.translate(-cam,0);
+  for(const o of objs){if(o.x<cam-220||o.x>cam+VW+220)continue;drawObj(o)}
+  for(const p of parts){ctx.globalAlpha=Math.max(0,Math.min(1,p.life*2));ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,7);ctx.fill()}
+  ctx.globalAlpha=1;
+  if(!R.dead)drawRocket(R.x,R.y,Math.max(-.5,Math.min(.6,R.vy/700)),thrust&&startDelay<=0);
+  ctx.font='22px Bungee, Arial Black, sans-serif';ctx.textAlign='center';
+  for(const f of floats){ctx.globalAlpha=Math.min(1,f.life*2);ctx.lineWidth=5;ctx.strokeStyle=C.ink;ctx.strokeText(f.txt,f.x,f.y);ctx.fillStyle=f.col;ctx.fillText(f.txt,f.x,f.y)}
+  ctx.globalAlpha=1;ctx.restore();
+  // ruudun reunat (pysty-puhelin)
+  if(startDelay>0&&mode==='play'){ctx.font='44px Bungee, Arial Black, sans-serif';ctx.textAlign='center';ctx.lineWidth=8;ctx.strokeStyle=C.ink;
+    const t=startDelay>.5?'Valmiina…':'LÄHTÖ!';ctx.strokeText(t,VW/2,VH/2-60);ctx.fillStyle=C.gold;ctx.fillText(t,VW/2,VH/2-60);
+    ctx.font='18px Atkinson Hyperlegible, sans-serif';ctx.lineWidth=5;const h='Paina ja pidä pohjassa = ylös';ctx.strokeText(h,VW/2,VH/2-25);ctx.fillStyle=C.blush;ctx.fillText(h,VW/2,VH/2-25)}
+  if(mode==='play'&&noiseState&&noiseState!=='off'){const loud=noiseState==='loud';ctx.font=(loud?'40px':'30px')+' Bungee, Arial Black, sans-serif';ctx.textAlign='center';ctx.lineWidth=8;ctx.strokeStyle=C.ink;
+    const t=loud?(ears?'Korvat kiinni, hyvä!':'KOVAA ÄÄNTÄ!'):'Kova ääni tulossa! Korvat kiinni!';ctx.strokeText(t,VW/2,110);ctx.fillStyle=loud?(ears?C.green:C.coral):C.gold;ctx.fillText(t,VW/2,110);
+    if(loud){ctx.strokeStyle=ears?'rgba(53,212,130,.35)':'rgba(238,108,99,.5)';ctx.lineWidth=6;for(let i=0;i<4;i++){const rr=((tAll*400+i*120)%480);ctx.beginPath();ctx.arc(VW+40,VH/2,rr,0,7);ctx.stroke()}}}
+  if(OY>0){ctx.setTransform(DPR,0,0,DPR,0,0);ctx.fillStyle=C.ink;ctx.fillRect(0,0,W,OY);ctx.fillRect(0,H-OY,W,OY)}
+}
+function drawObj(o){
+  if(o.t==='planet'){
+    if(o.ring){ctx.strokeStyle=shade(o.col,.4);ctx.lineWidth=5;ctx.beginPath();ctx.ellipse(o.x,o.y,o.r*1.7,o.r*.45,-.35,Math.PI,Math.PI*2);ctx.stroke()}
+    const g=ctx.createRadialGradient(o.x-o.r*.35,o.y-o.r*.35,o.r*.1,o.x,o.y,o.r);g.addColorStop(0,shade(o.col,.35));g.addColorStop(1,shade(o.col,-.25));
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(o.x,o.y,o.r,0,7);ctx.fill();ctx.lineWidth=3;ctx.strokeStyle=C.ink;ctx.stroke();
+    ctx.fillStyle=shade(o.col,-.15);o.spots.forEach((s,i)=>{ctx.beginPath();ctx.arc(o.x+(s-.5)*o.r,o.y+(i-1)*o.r*.4,o.r*.15,0,7);ctx.fill()});
+    if(o.ring){ctx.strokeStyle=shade(o.col,.4);ctx.lineWidth=5;ctx.beginPath();ctx.ellipse(o.x,o.y,o.r*1.7,o.r*.45,-.35,0,Math.PI);ctx.stroke()}
+  }else if(o.t==='moon'){
+    ctx.fillStyle='#c9cbd6';ctx.beginPath();ctx.arc(o.x,o.y,o.r,0,7);ctx.fill();ctx.lineWidth=4;ctx.strokeStyle=C.ink;ctx.stroke();
+    ctx.fillStyle='#a2a5b5';[[-.3,-.2,.22],[.3,.25,.17],[.1,-.45,.12],[-.25,.4,.1]].forEach(([a,b,c])=>{ctx.beginPath();ctx.arc(o.x+a*o.r,o.y+b*o.r,c*o.r,0,7);ctx.fill()});
+  }else if(o.t==='rock'){
+    ctx.save();ctx.translate(o.x,o.y);ctx.rotate(o.rot+tAll*.5);ctx.fillStyle='#8a7d72';ctx.strokeStyle=C.ink;ctx.lineWidth=2.5;ctx.beginPath();
+    for(let i=0;i<7;i++){const a=i/7*Math.PI*2,rr=o.r*(i%2?.82:1.08);ctx.lineTo(Math.cos(a)*rr,Math.sin(a)*rr)}ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+  }else if(o.t==='sun'){
+    const g=ctx.createRadialGradient(o.x,o.y,o.r*.4,o.x,o.y,o.r*1.7);g.addColorStop(0,'rgba(255,210,63,.9)');g.addColorStop(.55,'rgba(255,140,60,.45)');g.addColorStop(1,'rgba(255,100,60,0)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(o.x,o.y,o.r*1.7,0,7);ctx.fill();
+    ctx.fillStyle='#ffc93c';ctx.beginPath();for(let i=0;i<40;i++){const a=i/40*Math.PI*2,rr=o.r*(1+.06*Math.sin(i*3+tAll*6));ctx.lineTo(o.x+Math.cos(a)*rr,o.y+Math.sin(a)*rr)}ctx.closePath();ctx.fill();
+    ctx.lineWidth=4;ctx.strokeStyle='#e8762b';ctx.stroke();
+  }else if(o.t==='coin'||o.t==='star'){
+    if(o.got)return;const b=Math.sin(tAll*4+o.x)*3;
+    ctx.fillStyle='rgba(255,210,63,.25)';ctx.beginPath();ctx.arc(o.x,o.y+b,o.r+7,0,7);ctx.fill();
+    ctx.fillStyle=C.gold;ctx.strokeStyle=C.ink;ctx.lineWidth=2.5;ctx.beginPath();
+    if(o.t==='coin')ctx.arc(o.x,o.y+b,o.r,0,7);else for(let i=0;i<10;i++){const a=i/10*Math.PI*2-Math.PI/2+tAll,rr=i%2?o.r*.45:o.r;ctx.lineTo(o.x+Math.cos(a)*rr,o.y+b+Math.sin(a)*rr)}
+    ctx.closePath();ctx.fill();ctx.stroke();
+  }else if(o.t==='donut'){
+    const t=24;ctx.lineWidth=t;
+    ctx.strokeStyle='#e8a35a';ctx.beginPath();ctx.ellipse(o.x,o.y,26,o.R,0,0,7);ctx.stroke();
+    ctx.lineWidth=t*.6;ctx.strokeStyle=C.pink;ctx.beginPath();ctx.ellipse(o.x-3,o.y,24,o.R,0,0,7);ctx.stroke();
+    const sp=['#fff','#35d482','#ffd23f','#4fb6e8'];for(let i=0;i<14;i++){const a=i/14*Math.PI*2;ctx.fillStyle=sp[i%4];ctx.fillRect(o.x-3+Math.cos(a)*24-2,o.y+Math.sin(a)*o.R-1,4,3)}
+    ctx.lineWidth=2.5;ctx.strokeStyle=C.ink;ctx.beginPath();ctx.ellipse(o.x,o.y,26+t/2,o.R+t/2,0,0,7);ctx.stroke();ctx.beginPath();ctx.ellipse(o.x,o.y,Math.max(2,26-t/2),o.R-t/2,0,0,7);ctx.stroke();
+  }else if(o.t==='cage'){
+    const cl=cageClose(o),half=o.gap/2*(1-cl),top=o.gy-half,bot=o.gy+half;
+    ctx.fillStyle='#5b6687';ctx.strokeStyle=C.ink;ctx.lineWidth=3;
+    for(const [a,b] of [[-10,top],[bot,VH+10]]){ctx.fillRect(o.x-22,a,44,b-a);ctx.strokeRect(o.x-22,a,44,b-a);
+      ctx.strokeStyle='#c7cde0';ctx.lineWidth=4;for(let k=-14;k<=14;k+=14){ctx.beginPath();ctx.moveTo(o.x+k,a);ctx.lineTo(o.x+k,b);ctx.stroke()}ctx.strokeStyle=C.ink;ctx.lineWidth=3}
+    ctx.fillStyle=cl>0?C.coral:C.green;ctx.fillRect(o.x-22,top-8,44,8);ctx.fillRect(o.x-22,bot,44,8);
+    ctx.fillStyle=C.blush;ctx.font='13px Bungee, sans-serif';ctx.textAlign='center';ctx.fillText(cl>0?'KIINNI':'AUKI',o.x,Math.max(16,top-14));
+  }else if(o.t==='dragon'){
+    const y=o.y;ctx.save();ctx.translate(o.x,y);
+    const flap=Math.sin(tAll*8)*.5;ctx.fillStyle='#2f9e63';ctx.strokeStyle=C.ink;ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(10,-10);ctx.lineTo(50,-60-flap*30);ctx.lineTo(60,-5);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.fillStyle=C.green;ctx.beginPath();ctx.ellipse(15,10,50,30,0,0,7);ctx.fill();ctx.stroke();
+    ctx.beginPath();ctx.moveTo(60,15);ctx.quadraticCurveTo(110,10,105,-20);ctx.lineWidth=10;ctx.strokeStyle=C.green;ctx.stroke();ctx.lineWidth=3;ctx.strokeStyle=C.ink;
+    ctx.fillStyle=C.green;ctx.beginPath();ctx.ellipse(-35,0,30,22,0,0,7);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(-40,-8,7,0,7);ctx.fill();ctx.fillStyle=C.ink;ctx.beginPath();ctx.arc(-43,-8,3.5,0,7);ctx.fill();
+    ctx.fillStyle=C.gold;ctx.beginPath();ctx.moveTo(-28,-20);ctx.lineTo(-22,-34);ctx.lineTo(-16,-18);ctx.fill();
+    ctx.fillStyle='#2f9e63';ctx.beginPath();ctx.moveTo(10,-10);ctx.lineTo(35,-55+flap*30);ctx.lineTo(45,-8);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.restore();
+    if(o.st==='smoke'){for(let i=0;i<4;i++){ctx.fillStyle='rgba(200,200,210,'+(.5-i*.1)+')';ctx.beginPath();ctx.arc(o.x-65-i*14,y+6-Math.sin(tAll*5+i)*6,8+i*4,0,7);ctx.fill()}}
+    if(o.st==='fire'){const len=Math.min(1,(o.ft-2)*4)*290;
+      for(let i=0;i<26;i++){const k=i/26,fx=o.x-60-k*len,fy=y+6+Math.sin(tAll*30+i)*10*k;ctx.fillStyle=i%3?C.coral:C.gold;ctx.globalAlpha=.9-k*.4;ctx.beginPath();ctx.arc(fx,fy,10+k*26,0,7);ctx.fill()}ctx.globalAlpha=1}
+  }else if(o.t==='finish'){
+    ctx.fillStyle='rgba(53,212,130,.2)';ctx.fillRect(o.x-10,0,60,VH);
+    for(let yy=0;yy<VH;yy+=30){ctx.fillStyle=(yy/30)%2?C.blush:C.ink;ctx.fillRect(o.x,yy,14,30);ctx.fillStyle=(yy/30)%2?C.ink:C.blush;ctx.fillRect(o.x+14,yy,14,30)}
+    ctx.fillStyle=C.gold;ctx.strokeStyle=C.ink;ctx.lineWidth=5;ctx.beginPath();ctx.arc(o.x+80,VH/2,44,0,7);ctx.fill();ctx.stroke();
+    ctx.lineWidth=5;ctx.strokeStyle=C.pink;ctx.beginPath();ctx.arc(o.x+80,VH/2,52,0,7);ctx.stroke();
+    ctx.fillStyle=C.ink;ctx.font='38px Bungee, Arial Black, sans-serif';ctx.textAlign='center';ctx.fillText(lvl,o.x+80,VH/2+14);
+  }
+}
+function drawRocket(x,y,ang,flame){
+  ctx.save();ctx.translate(x,y);ctx.rotate(ang);
+  if(flame){ctx.fillStyle=C.gold;ctx.beginPath();ctx.moveTo(-34,-8);ctx.lineTo(-58-Math.random()*16,0);ctx.lineTo(-34,8);ctx.fill();
+    ctx.fillStyle=C.coral;ctx.beginPath();ctx.moveTo(-34,-5);ctx.lineTo(-46-Math.random()*8,0);ctx.lineTo(-34,5);ctx.fill()}
+  ctx.strokeStyle=C.ink;ctx.lineWidth=3;
+  // evät
+  ctx.fillStyle=C.coral;ctx.beginPath();ctx.moveTo(-22,8);ctx.lineTo(-36,26);ctx.lineTo(-8,12);ctx.fill();ctx.stroke();
+  // runko
+  ctx.fillStyle=C.blush;ctx.beginPath();ctx.moveTo(-34,-10);ctx.lineTo(18,-12);ctx.quadraticCurveTo(44,-6,46,4);ctx.quadraticCurveTo(44,14,18,18);ctx.lineTo(-34,16);ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.fillStyle=C.pink;ctx.beginPath();ctx.moveTo(28,-10);ctx.quadraticCurveTo(44,-6,46,4);ctx.quadraticCurveTo(44,14,28,17);ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.fillStyle=C.pink;ctx.fillRect(-34,10,52,6);
+  // Pikku Pörrö istuu raketin päällä
+  ctx.imageSmoothingEnabled=false;{const k=4,pw=(PB.x1-PB.x0)*k,ph=(PB.y1-PB.y0)*k;ctx.drawImage(porro,PB.x0,PB.y0,PB.x1-PB.x0,PB.y1-PB.y0,-4-pw/2,-8-ph,pw,ph)}
+  if(ears){ctx.fillStyle='#a8714a';ctx.strokeStyle=C.ink;ctx.lineWidth=2;
+    {const k=4,pw=(PB.x1-PB.x0)*k,ph=(PB.y1-PB.y0)*k;for(const ex of [-4-pw/2+4,-4+pw/2-4]){ctx.beginPath();ctx.ellipse(ex,-8-ph+14,8,7,0,0,7);ctx.fill();ctx.stroke()}}}
+  // lasikupu
+  ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(-4,-12,30,Math.PI*1.05,Math.PI*1.95);ctx.stroke();
+  // toinen evä
+  ctx.fillStyle=C.coral;ctx.strokeStyle=C.ink;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-22,-8);ctx.lineTo(-38,-22);ctx.lineTo(-10,-10);ctx.fill();ctx.stroke();
+  ctx.restore();
+}
+
+/* ========== silmukka ========== */
+function loop(t){const dt=Math.min(.05,(t-lastT)/1000||0);lastT=t;if(mode!=='pause')update(dt);draw();requestAnimationFrame(loop)}
+
+/* ========== ohjaus ========== */
+function setThrust(){thrust=thrustPtr.size>0||keyUp}
+let keyUp=false;
+cv.addEventListener('pointerdown',e=>{audio();if(mode!=='play')return;thrustPtr.add(e.pointerId);setThrust();e.preventDefault()});
+addEventListener('pointerup',e=>{thrustPtr.delete(e.pointerId);earPtr.delete(e.pointerId);setThrust();setEars()});
+addEventListener('pointercancel',e=>{thrustPtr.delete(e.pointerId);earPtr.delete(e.pointerId);setThrust();setEars()});
+const earPtr=new Set();let keyEars=false;
+function setEars(){ears=earPtr.size>0||keyEars;$('ears').classList.toggle('on',ears)}
+$('ears').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();audio();earPtr.add(e.pointerId);setEars()});
+$('ears').addEventListener('contextmenu',e=>e.preventDefault());
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+addEventListener('keydown',e=>{
+  if([' ','ArrowUp','w','W'].includes(e.key)){e.preventDefault();audio();
+    if(mode==='intro'){startLevel(lvl);return}if(mode==='dead'&&!$('sDead').hidden){intro(lvl);return}
+    keyUp=true;setThrust()}
+  if(['k','K','ArrowDown','s','S'].includes(e.key)){keyEars=true;setEars()}
+  if(e.key==='Escape'||e.key==='p'||e.key==='P')togglePause();
+});
+addEventListener('keyup',e=>{if([' ','ArrowUp','w','W'].includes(e.key)){keyUp=false;setThrust()}if(['k','K','ArrowDown','s','S'].includes(e.key)){keyEars=false;setEars()}});
+function togglePause(){if(mode==='play'){mode='pause';show('sPause');if(engineGain)engineGain.gain.value=0;if(noiseGain)noiseGain.gain.value=0}else if(mode==='pause'){mode='play';show(null);lastT=performance.now()}}
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&mode==='play')togglePause()});
+$('bPause').onclick=togglePause;$('bResume').onclick=togglePause;
+$('bMute').onclick=()=>{muted=!muted;$('bMute').style.opacity=muted?.4:1;if(master)master.gain.value=muted?0:.8};
+$('bGo').onclick=()=>startLevel(lvl);
+$('bRetry').onclick=()=>startLevel(lvl);
+$('bNext').onclick=()=>intro(Math.min(10,lvl+1));
+document.querySelectorAll('[data-menu]').forEach(b=>b.onclick=menu);
+
+resize();menu();requestAnimationFrame(loop);
+</script>
+</body></html>
