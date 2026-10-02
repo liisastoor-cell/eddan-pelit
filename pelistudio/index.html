@@ -589,18 +589,34 @@ function renderPoster(){
 /* ---------- puhu ideasi ---------- */
 const MIC_SVG='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5" fill="currentColor"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3.5M8.5 21.5h7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-let rec=null,recBtn=null,recField=null,micBlocked=!SR;
+let rec=null,recBtn=null,recField=null,micBlocked=!SR,wantRec=false;
+const INFRAME=(()=>{try{return window.self!==window.top}catch(_){return true}})();
+const PAGE_URL='https://liisastoor-cell.github.io/eddan-pelit/pelistudio/';
 const help=document.createElement('div');help.className='talkhelp';help.hidden=true;
-help.innerHTML='<p><b>Puhu näppäimistön mikrofoniin.</b> Tämä selain ei anna sivun avata mikrofonia itse, mutta näppäimistön oma puhetoiminto toimii. Kirjoituskenttä on nyt valittuna:</p>'+
-  '<ul><li><b>iPad ja iPhone:</b> paina näppäimistön mikrofonia ja puhu. Jos sitä ei näy: Asetukset → Yleiset → Näppäimistö → Sanelu päälle.</li>'+
+const KEYB='<ul><li><b>iPad ja iPhone:</b> paina näppäimistön mikrofonia ja puhu. Jos sitä ei näy: Asetukset → Yleiset → Näppäimistö → Sanelu päälle.</li>'+
   '<li><b>Android-tabletti:</b> paina näppäimistön yläreunan mikrofonia (Gboard).</li>'+
   '<li><b>Windows-kone:</b> paina Windows-näppäin + H.</li>'+
-  '<li><b>Mac:</b> paina kahdesti fn-näppäintä tai mikrofoninäppäintä.</li></ul>'+
-  '<p>Valitse näppäimistön kieleksi suomi, niin puhe muuttuu suomeksi tekstiksi.</p>'+
-  '<div class="row"><button class="btn small" type="button">Selvä</button></div>';
-help.querySelector('button').addEventListener('click',()=>{help.hidden=true});
-function showHelp(btn,field){btn.after(help);help.hidden=false;field.focus();try{field.setSelectionRange(field.value.length,field.value.length)}catch(_){}}
-function stopRec(){if(rec){try{rec.stop()}catch(_){}}}
+  '<li><b>Mac:</b> paina kahdesti fn-näppäintä tai mikrofoninäppäintä.</li></ul>';
+function helpHtml(kind){
+  if(kind==='frame')return '<p><b>Mikrofoni ei toimi tämän ikkunan sisällä.</b> Avaa Pelistudio omaan selainikkunaan, niin Puhu-nappi toimii:</p>'+
+    '<p><a href="'+PAGE_URL+'" target="_blank" rel="noopener"><b>Avaa Pelistudio selaimessa</b></a></p>';
+  if(kind==='denied')return '<p><b>Mikrofoni on estetty tältä sivulta.</b> Salli se näin:</p>'+
+    '<ul><li><b>Chrome ja Edge:</b> paina osoiterivin vasemmasta reunasta lukon tai säätimien kuvaa → Mikrofoni → Salli. Päivitä sivu.</li>'+
+    '<li><b>Safari:</b> Safari-valikko → Tämän verkkosivuston asetukset → Mikrofoni → Salli.</li>'+
+    '<li><b>Mac:</b> tarkista myös Järjestelmäasetukset → Tietosuoja ja suojaus → Mikrofoni → selain päälle.</li>'+
+    '<li><b>Windows:</b> Asetukset → Tietosuoja ja suojaus → Mikrofoni → salli työpöytäsovellukset.</li></ul>';
+  if(kind==='nomic')return '<p><b>Mikrofonia ei löytynyt.</b> Tarkista, että mikrofoni tai kuulokkeet on kytketty ja ettei toinen ohjelma (esim. Teams tai Zoom) käytä sitä.</p>';
+  if(kind==='network')return '<p><b>Puheentunnistus tarvitsee nettiyhteyden.</b> Tarkista netti ja paina Puhu uudestaan.</p>';
+  if(kind==='nosupport')return '<p><b>Tämä selain ei osaa muuttaa puhetta tekstiksi.</b> Käytä Chromea, Edgeä tai Safaria, tai puhu näppäimistön mikrofoniin:</p>'+KEYB;
+  return '<p><b>Puhu näppäimistön mikrofoniin.</b> Kirjoituskenttä on nyt valittuna:</p>'+KEYB;
+}
+function showHelp(btn,field,kind){
+  help.innerHTML=helpHtml(kind||'nosupport')+'<div class="row"><button class="btn small" type="button">Selvä</button></div>';
+  help.querySelector('button').addEventListener('click',()=>{help.hidden=true});
+  btn.after(help);help.hidden=false;
+  if(kind!=='frame'&&kind!=='denied'){field.focus();try{field.setSelectionRange(field.value.length,field.value.length)}catch(_){}}
+}
+function stopRec(){wantRec=false;if(rec){try{rec.stop()}catch(_){}}}
 function setMic(btn,on){btn.classList.toggle('on',on);btn.querySelector('span').textContent=on?'Kuuntelen… paina kun valmis':'Puhu'}
 function addSpoken(field,text){
   text=text.trim();if(!text)return;
@@ -608,16 +624,40 @@ function addSpoken(field,text){
   const v=field.value;const sep=!v?'':(/[.!?]\s*$/.test(v)?' ':(/\s$/.test(v)?'':'. '));
   field.value=v+sep+text;field.dispatchEvent(new Event('input',{bubbles:true}));
 }
-function startRec(btn,field){
-  if(micBlocked){showHelp(btn,field);return}
+async function askMic(){
+  // Pyydetään lupa erikseen, jotta selain varmasti näyttää lupakyselyn.
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return 'ok';
+  try{const st=await navigator.mediaDevices.getUserMedia({audio:true});st.getTracks().forEach(t=>t.stop());return 'ok'}
+  catch(e){const n=e&&e.name;
+    if(n==='NotAllowedError'||n==='SecurityError')return 'denied';
+    if(n==='NotFoundError'||n==='OverconstrainedError')return 'nomic';
+    if(n==='NotReadableError')return 'nomic';
+    return 'ok'}
+}
+async function startRec(btn,field){
   if(rec){const same=recBtn===btn;stopRec();if(same)return}
-  let r;try{r=new SR()}catch(e){micBlocked=true;showHelp(btn,field);return}
-  rec=r;recBtn=btn;recField=field;
+  if(!SR){showHelp(btn,field,'nosupport');return}
+  const perm=await askMic();
+  if(perm!=='ok'){showHelp(btn,field,INFRAME&&perm==='denied'?'frame':perm);return}
+  let r;try{r=new SR()}catch(e){showHelp(btn,field,'nosupport');return}
+  rec=r;recBtn=btn;recField=field;wantRec=true;
   r.lang='fi-FI';r.continuous=true;r.interimResults=false;
   r.onresult=e=>{for(let i=e.resultIndex;i<e.results.length;i++){if(e.results[i].isFinal)addSpoken(field,e.results[i][0].transcript)}};
-  r.onerror=e=>{if(['not-allowed','service-not-allowed','audio-capture','network'].includes(e.error)){micBlocked=true;showHelp(btn,field)}};
-  r.onend=()=>{setMic(btn,false);if(rec===r){rec=null;recBtn=null;recField=null}};
-  try{r.start();setMic(btn,true);help.hidden=true}catch(e){micBlocked=true;rec=null;showHelp(btn,field)}
+  r.onerror=e=>{
+    const er=e.error;
+    if(er==='no-speech'||er==='aborted')return; // hiljaisuus ei ole virhe
+    wantRec=false;
+    if(er==='not-allowed'||er==='service-not-allowed')showHelp(btn,field,INFRAME?'frame':'denied');
+    else if(er==='audio-capture')showHelp(btn,field,'nomic');
+    else if(er==='network')showHelp(btn,field,'network');
+    else showHelp(btn,field,'nosupport');
+  };
+  r.onend=()=>{
+    // Chrome lopettaa itsestään hiljaisuuden jälkeen: jatketaan kuuntelua kunnes nappia painetaan.
+    if(wantRec&&rec===r){try{r.start();return}catch(_){}}
+    setMic(btn,false);if(rec===r){rec=null;recBtn=null;recField=null}
+  };
+  try{r.start();setMic(btn,true);help.hidden=true}catch(e){rec=null;wantRec=false;showHelp(btn,field,'nosupport')}
 }
 document.querySelectorAll('label.field').forEach(lab=>{
   const field=lab.querySelector('textarea,input[type=text]');if(!field)return;
