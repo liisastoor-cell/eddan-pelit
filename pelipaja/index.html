@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Eddan Pelipaja</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<style>
+/* Layout: one-column workbench — sticker-style header and mode tabs, the 12×9 level canvas as the stage, tools under it. Single bright theme by choice. */
+:root{
+  --bg:#fff4e2;
+  --dot:#f3dfbf;
+  --ink:#2a2140;
+  --panel:#ffffff;
+  --accent:#ff5d8f;
+  --sky:#3fb6ff;
+  --sun:#ffd23f;
+  --muted:#6a6184;
+  --display:"Bungee","Arial Black",Impact,sans-serif;
+  --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--ink)}
+body{margin:0;
+  font-family:var(--body);font-size:16px;line-height:1.45;
+  background-image:radial-gradient(var(--dot) 1.5px,transparent 1.6px);
+  background-size:18px 18px;
+  padding-inline:16px;padding-block:18px 40px;
+}
+.wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,7vw,44px);line-height:1;margin:0;letter-spacing:.5px;text-wrap:balance}
+h1 span{color:var(--accent);-webkit-text-stroke:2px var(--ink);paint-order:stroke fill}
+.sub{margin:6px 0 0;color:var(--muted)}
+h2{font-family:var(--display);font-weight:400;font-size:18px;margin:0;letter-spacing:.4px}
+.label{font-size:13px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:var(--muted)}
+
+.btn{
+  font-family:var(--display);font-size:15px;letter-spacing:.3px;color:var(--ink);
+  background:var(--panel);border:3px solid var(--ink);border-radius:12px;
+  padding:.5em .95em;box-shadow:0 4px 0 var(--ink);cursor:pointer;
+  transition:transform .06s,box-shadow .06s;touch-action:manipulation;
+}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+.btn:focus-visible,.tool:focus-visible,.tab:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,.pad button:focus-visible{outline:3px solid var(--sky);outline-offset:3px}
+.btn.pink{background:var(--accent)}
+.btn.sun{background:var(--sun)}
+.btn.small{font-size:13px;padding:.4em .7em;box-shadow:0 3px 0 var(--ink)}
+.btn.warn{background:#ffd6d6}
+
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.tab{
+  font-family:var(--display);font-size:clamp(12px,3.2vw,16px);color:var(--ink);
+  background:var(--panel);border:3px solid var(--ink);border-radius:12px;padding:.6em .3em;cursor:pointer;
+}
+.tab[aria-selected="true"]{background:var(--sun);box-shadow:inset 0 -5px 0 rgba(42,33,64,.15)}
+
+.stage{position:relative;border:4px solid var(--ink);border-radius:14px;overflow:hidden;box-shadow:0 6px 0 var(--ink);background:var(--ink)}
+canvas#stage{display:block;width:100%;height:auto;image-rendering:pixelated;touch-action:none;cursor:crosshair}
+.stage.playing canvas{cursor:default}
+.hud{display:flex;gap:8px;flex-wrap:wrap}
+.chip{font-family:var(--display);font-size:14px;background:var(--panel);border:3px solid var(--ink);border-radius:999px;padding:.25em .8em;font-variant-numeric:tabular-nums}
+.toast{position:absolute;left:50%;top:10px;transform:translateX(-50%);background:var(--panel);border:3px solid var(--ink);border-radius:999px;padding:.3em 1em;font-weight:700;white-space:nowrap;max-width:92%;overflow:hidden;text-overflow:ellipsis}
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(42,33,64,.72);color:#fff;text-align:center;padding:16px}
+.overlay strong{font-family:var(--display);font-weight:400;font-size:clamp(30px,9vw,56px);color:var(--sun);-webkit-text-stroke:2px var(--ink);paint-order:stroke fill}
+.overlay .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+
+.panel{background:var(--panel);border:3px solid var(--ink);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.tools{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.tool{display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--bg);border:3px solid var(--ink);border-radius:10px;padding:6px 2px;cursor:pointer;font-weight:700;font-size:12px;color:var(--ink);min-width:0}
+.tool img{width:36px;height:36px;image-rendering:pixelated;border-radius:4px}
+.tool[aria-pressed="true"]{background:var(--sun);transform:translateY(-2px);box-shadow:0 4px 0 var(--ink)}
+.tool span{overflow:hidden;text-overflow:ellipsis;max-width:100%;white-space:nowrap}
+.settings{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+select,input[type=text],textarea{font:inherit;color:var(--ink);background:var(--bg);border:3px solid var(--ink);border-radius:10px;padding:.45em .6em;width:100%}
+textarea{font-family:ui-monospace,Menlo,monospace;font-size:12px;min-height:70px;resize:vertical;word-break:break-all}
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.hint{color:var(--muted);margin:0;font-size:15px;max-width:62ch}
+
+.playbar{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.pad{display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(2,64px);gap:6px;margin-inline:auto}
+.pad button{font-family:var(--display);font-size:26px;border:3px solid var(--ink);border-radius:14px;background:var(--sky);color:var(--ink);box-shadow:0 4px 0 var(--ink);touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer}
+.pad button:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+.pad .up{grid-column:2;grid-row:1}.pad .left{grid-column:1;grid-row:2}.pad .down{grid-column:2;grid-row:2}.pad .right{grid-column:3;grid-row:2}
+
+.drawarea{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+.pix{display:grid;grid-template-columns:repeat(8,1fr);width:min(100%,320px);aspect-ratio:1;border:3px solid var(--ink);border-radius:8px;overflow:hidden;touch-action:none;
+  background-image:linear-gradient(45deg,#e9e3f2 25%,transparent 25%,transparent 75%,#e9e3f2 75%),linear-gradient(45deg,#e9e3f2 25%,#fff 25%,#fff 75%,#e9e3f2 75%);background-size:20px 20px;background-position:0 0,10px 10px}
+.pix div{border-right:1px solid rgba(42,33,64,.12);border-bottom:1px solid rgba(42,33,64,.12);cursor:pointer}
+.side{display:flex;flex-direction:column;gap:12px;min-width:0;flex:1}
+.swatches{display:grid;grid-template-columns:repeat(5,44px);gap:6px}
+.sw{width:44px;height:44px;border:3px solid var(--ink);border-radius:10px;cursor:pointer;padding:0}
+.sw[aria-pressed="true"]{outline:3px solid var(--accent);outline-offset:2px}
+.sw.clear{background:repeating-linear-gradient(45deg,#fff 0 6px,#e9e3f2 6px 12px)}
+#spPrev{width:96px;height:96px;image-rendering:pixelated;border:3px solid var(--ink);border-radius:10px}
+.seg{display:flex;gap:8px}
+.seg .btn[aria-pressed="true"]{background:var(--sun)}
+
+.saved{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.saved li{display:flex;align-items:center;gap:10px;justify-content:space-between;border:2px solid var(--ink);border-radius:10px;padding:8px 10px;background:var(--bg);flex-wrap:wrap}
+.saved b{min-width:0;overflow-wrap:anywhere}
+.empty{color:var(--muted);font-style:italic}
+
+@media (max-width:520px){
+  .tools{grid-template-columns:repeat(4,1fr)}
+  .pad{grid-template-columns:repeat(3,72px);grid-template-rows:repeat(2,72px)}
+}
+@media (prefers-reduced-motion:reduce){.btn,.tool{transition:none}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Eddan <span>Pelipaja</span></h1>
+      <p class="sub">Rakenna kenttä, piirrä hahmot ja pelaa.</p>
+    </div>
+    <button class="btn small" id="soundBtn" aria-pressed="true">Äänet: päällä</button>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="build" aria-selected="true">Rakenna</button>
+    <button class="tab" role="tab" data-tab="play" aria-selected="false">Pelaa</button>
+    <button class="tab" role="tab" data-tab="draw" aria-selected="false">Piirrä</button>
+    <button class="tab" role="tab" data-tab="save" aria-selected="false">Tallenna</button>
+  </nav>
+
+  <div id="stageArea" class="wrap" style="gap:12px">
+    <div class="hud" id="hud" hidden>
+      <span class="chip" id="hudCoins">Kolikot 0/0</span>
+      <span class="chip" id="hudLives">Elämät 3</span>
+      <span class="chip" id="hudTime">Aika 0 s</span>
+    </div>
+    <div class="stage" id="stageBox">
+      <canvas id="stage" width="576" height="432" aria-label="Pelikenttä"></canvas>
+      <div class="toast" id="toast" hidden></div>
+      <div class="overlay" id="overlay" hidden>
+        <strong id="ovTitle">Voitit!</strong>
+        <div id="ovText"></div>
+        <div class="row">
+          <button class="btn sun" id="ovAgain">Pelaa uudestaan</button>
+          <button class="btn" id="ovBuild">Muokkaa kenttää</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RAKENNA -->
+  <section id="tab-build" class="panel">
+    <div class="actions" style="justify-content:space-between">
+      <h2>Valitse palikka ja piirrä kenttään</h2>
+      <button class="btn pink" id="testBtn">Testaa peliä</button>
+    </div>
+    <div class="tools" id="tools"></div>
+    <p class="hint" id="toolHint"></p>
+    <div class="settings">
+      <label class="field"><span class="label">Pelin nimi</span><input type="text" id="lvName" maxlength="40"></label>
+      <label class="field"><span class="label">Maailma</span><select id="lvTheme"></select></label>
+      <label class="field"><span class="label">Möröt liikkuvat</span>
+        <select id="lvMode">
+          <option value="vaaka">Edestakaisin sivulle</option>
+          <option value="pysty">Edestakaisin ylös-alas</option>
+          <option value="jahtaa">Jahtaavat sankaria</option>
+        </select></label>
+      <label class="field"><span class="label">Mörköjen nopeus</span>
+        <select id="lvSpeed">
+          <option value="hidas">Hidas</option>
+          <option value="keski">Keskinopea</option>
+          <option value="nopea">Nopea</option>
+        </select></label>
+      <label class="field"><span class="label">Elämät</span>
+        <select id="lvLives">
+          <option value="1">1</option><option value="3">3</option><option value="5">5</option><option value="9">9</option>
+        </select></label>
+    </div>
+    <div class="actions">
+      <button class="btn small warn" id="clearBtn">Tyhjennä kenttä</button>
+      <button class="btn small" id="sampleBtn">Avaa esimerkkikenttä</button>
+    </div>
+  </section>
+
+  <!-- PELAA -->
+  <section id="tab-play" class="panel" hidden>
+    <div class="playbar">
+      <p class="hint">Liiku nuolinäppäimillä tai alla olevilla napeilla. Kerää kaikki kolikot ja mene lipulle. Varo mörköjä ja laavaa!</p>
+      <button class="btn sun" id="restartBtn">Alusta</button>
+    </div>
+    <div class="pad" id="pad">
+      <button class="up" data-d="0,-1" aria-label="Ylös">▲</button>
+      <button class="left" data-d="-1,0" aria-label="Vasemmalle">◀</button>
+      <button class="down" data-d="0,1" aria-label="Alas">▼</button>
+      <button class="right" data-d="1,0" aria-label="Oikealle">▶</button>
+    </div>
+  </section>
+
+  <!-- PIIRRÄ -->
+  <section id="tab-draw" class="panel" hidden>
+    <div class="actions" style="justify-content:space-between">
+      <h2>Piirrä oma hahmo</h2>
+      <div class="seg" id="spSeg">
+        <button class="btn small" data-sp="hero" aria-pressed="true">Sankari</button>
+        <button class="btn small" data-sp="monster" aria-pressed="false">Mörkö</button>
+      </div>
+    </div>
+    <div class="drawarea">
+      <div class="pix" id="pix" aria-label="Piirtoruudukko 8 kertaa 8"></div>
+      <div class="side">
+        <span class="label">Värit</span>
+        <div class="swatches" id="sw"></div>
+        <span class="label">Tältä se näyttää pelissä</span>
+        <canvas id="spPrev" width="96" height="96"></canvas>
+        <div class="actions">
+          <button class="btn small warn" id="spClear">Tyhjennä</button>
+          <button class="btn small" id="spReset">Alkuperäinen</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TALLENNA -->
+  <section id="tab-save" class="panel" hidden>
+    <h2>Omat pelit tällä laitteella</h2>
+    <div class="actions">
+      <button class="btn pink" id="saveBtn">Tallenna nykyinen peli</button>
+      <button class="btn small" id="newBtn">Uusi tyhjä peli</button>
+    </div>
+    <ul class="saved" id="savedList"></ul>
+    <h2>Jaa koodilla</h2>
+    <p class="hint">Kopioi koodi ja liitä se toisella laitteella kohtaan "Avaa koodi". Näin peli siirtyy esimerkiksi tabletilta puhelimeen tai kaverille.</p>
+    <textarea id="codeOut" readonly aria-label="Pelin koodi"></textarea>
+    <div class="actions"><button class="btn small sun" id="copyBtn">Kopioi koodi</button></div>
+    <label class="field"><span class="label">Avaa koodi</span><textarea id="codeIn" placeholder="Liitä koodi tähän"></textarea></label>
+    <div class="actions"><button class="btn small" id="loadCodeBtn">Avaa peli koodista</button></div>
+  </section>
+</div>
+
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const W=12,H=9,T=48;
+const E=0,WALL=1,COIN=2,MON=3,LAVA=4,GOAL=5,START=6;
+const PAL={'.':null,a:'#f2c19a',b:'#6b3b1f',c:'#e8475f',d:'#2f5fd0',e:'#222222',f:'#ffffff',g:'#3fbf5f',h:'#ffd23f',i:'#8a4fd8'};
+const PKEYS=Object.keys(PAL);
+const HERO_DEF=["..bbbb..",".bbbbbb.",".aeaaea.",".aaaaaa.","..cccc..",".acccca.","..dddd..","..d..d.."].join('');
+const MON_DEF=["..gggg..",".gggggg.","gfeggfeg","gggggggg","ggeeeegg","gggggggg","gg.gg.gg","g..g..g."].join('');
+const THEMES={
+  niitty:{name:'Niitty',bg:'#9ad66f',bg2:'#8fcc63',wall:'#8d929b',wall2:'#6c717a'},
+  luola:{name:'Luola',bg:'#3d3552',bg2:'#372f4b',wall:'#8b6b4a',wall2:'#664d33'},
+  lumi:{name:'Lumimaa',bg:'#e9f3fb',bg2:'#dcebf7',wall:'#7fb4d8',wall2:'#5c94bd'},
+  avaruus:{name:'Avaruus',bg:'#17193a',bg2:'#1c1f45',wall:'#6a7aa8',wall2:'#4a5884',stars:true}
+};
+const TOOLS=[
+  {id:START,name:'Aloitus',hint:'Aloitus: tästä sankari lähtee. Aloituksia voi olla vain yksi.'},
+  {id:WALL,name:'Seinä',hint:'Seinä: sankari ja möröt eivät pääse läpi.'},
+  {id:COIN,name:'Kolikko',hint:'Kolikko: kaikki pitää kerätä ennen maalia.'},
+  {id:MON,name:'Mörkö',hint:'Mörkö: jos se koskee sankaria, menee yksi elämä.'},
+  {id:LAVA,name:'Laava',hint:'Laava: siihen ei saa astua!'},
+  {id:GOAL,name:'Maali',hint:'Maali: kun kolikot on kerätty, tänne pääsee voittamaan.'},
+  {id:E,name:'Kumi',hint:'Kumi: pyyhi palikoita pois.'}
+];
+const SPEED={hidas:700,keski:430,nopea:260};
+const SAMPLE=["S..#....c...",".#.#.##.#.#.",".#c..#..#.c.",".####.M.###.","......#.....",".##.#.#.##..",".c#.#...#c..",".##.##L##...","M.....c...#G"];
+const CH={'.':E,'#':WALL,c:COIN,M:MON,L:LAVA,G:GOAL,S:START};
+
+function sampleLevel(){return{name:'Mörkölabyrintti',theme:'niitty',mode:'vaaka',speed:'keski',lives:3,grid:SAMPLE.join('').split('').map(c=>CH[c]),sprites:{hero:HERO_DEF,monster:MON_DEF}}}
+function emptyLevel(){const g=new Array(W*H).fill(E);g[0]=START;g[W*H-1]=GOAL;return{name:'Uusi peli',theme:'niitty',mode:'vaaka',speed:'keski',lives:3,grid:g,sprites:{hero:HERO_DEF,monster:MON_DEF}}}
+function valid(l){return l&&Array.isArray(l.grid)&&l.grid.length===W*H&&l.sprites&&typeof l.sprites.hero==='string'&&l.sprites.hero.length===64&&typeof l.sprites.monster==='string'&&l.sprites.monster.length===64&&THEMES[l.theme]}
+function store(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+function recall(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(e){return null}}
+
+let level=recall('pelipaja-current');
+if(!valid(level))level=sampleLevel();
+let tool=WALL, mode='build', soundOn=true, P=null, spKey='hero', color='c';
+
+const cv=$('#stage'),ctx=cv.getContext('2d');ctx.imageSmoothingEnabled=false;
+
+/* ---------- piirtäminen ---------- */
+function drawSprite(c,str,x,y,s,flip){
+  const px=s/8;
+  for(let i=0;i<64;i++){const col=PAL[str[i]];if(!col)continue;let cx=i%8;if(flip)cx=7-cx;c.fillStyle=col;c.fillRect(Math.round(x+cx*px),Math.round(y+(i>>3)*px),Math.ceil(px),Math.ceil(px))}
+}
+function ground(c,x,y,s,th,cx,cy){
+  c.fillStyle=((cx+cy)%2)?th.bg2:th.bg;c.fillRect(x,y,s,s);
+  if(th.stars){const h=(cx*73+cy*151)%11;if(h<4){c.fillStyle='#ffffff';const d=Math.max(1,s/16);c.fillRect(x+((h*5+2)%8)/8*s,y+((h*3+1)%8)/8*s,d,d)}}
+}
+function thing(c,x,y,s,id,th,t,editor){
+  if(id===WALL){
+    c.fillStyle=th.wall;c.fillRect(x,y,s,s);c.fillStyle=th.wall2;const lw=Math.max(1,s/16),r=s/4;
+    for(let i=0;i<4;i++){c.fillRect(x,y+i*r,s,lw);c.fillRect(i%2?x+s*.25:x+s*.75,y+i*r,lw,r)}
+    c.fillStyle='rgba(255,255,255,.2)';c.fillRect(x,y,s,lw);
+  }else if(id===COIN){
+    const bob=t?Math.sin(t/220+x)*s*.05:0;
+    c.fillStyle='#b8860b';c.beginPath();c.arc(x+s/2,y+s/2+bob,s*.3,0,7);c.fill();
+    c.fillStyle='#ffd23f';c.beginPath();c.arc(x+s/2,y+s/2+bob,s*.23,0,7);c.fill();
+    c.fillStyle='#fff6c2';c.fillRect(x+s*.4,y+s*.36+bob,s*.08,s*.22);
+  }else if(id===LAVA){
+    c.fillStyle='#ff6a2b';c.fillRect(x,y,s,s);c.fillStyle='#ffb02e';
+    for(let i=0;i<3;i++){const ph=(t||0)/300+i*2+x;c.fillRect(x+s*(.12+i*.28),y+s*(.3+.18*Math.sin(ph)),s*.18,s*.12)}
+    c.fillStyle='#d9431a';c.fillRect(x,y+s*.85,s,s*.15);
+  }else if(id===GOAL){
+    c.fillStyle='#5a4a3a';c.fillRect(x+s*.28,y+s*.12,s*.08,s*.76);c.fillRect(x+s*.18,y+s*.84,s*.3,s*.06);
+    const w=t?Math.sin(t/200)*s*.04:0;
+    c.fillStyle='#ff5d8f';c.beginPath();c.moveTo(x+s*.36,y+s*.14);c.lineTo(x+s*.82,y+s*.28+w);c.lineTo(x+s*.36,y+s*.44);c.fill();
+  }else if(id===MON){
+    drawSprite(c,level.sprites.monster,x+s*.06,y+s*.06,s*.88);
+  }else if(id===START&&editor){
+    drawSprite(c,level.sprites.hero,x+s*.06,y+s*.06,s*.88);
+    c.save();c.strokeStyle='#ffffff';c.lineWidth=Math.max(1,s/16);c.setLineDash([s/8,s/8]);c.strokeRect(x+2,y+2,s-4,s-4);c.restore();
+  }
+}
+function render(t){
+  const th=THEMES[level.theme];
+  const grid=(mode==='play'&&P)?P.g:level.grid;
+  for(let cy=0;cy<H;cy++)for(let cx=0;cx<W;cx++){
+    const x=cx*T,y=cy*T;ground(ctx,x,y,T,th,cx,cy);
+    const id=grid[cy*W+cx];if(id)thing(ctx,x,y,T,id,th,mode==='play'?t:0,mode!=='play');
+  }
+  if(mode==='play'&&P){
+    for(const m of P.en){const hop=Math.abs(Math.sin(t/180+m.x))*T*.05;drawSprite(ctx,level.sprites.monster,m.x*T+T*.06,m.y*T+T*.06-hop,T*.88,m.dir<0)}
+    const blink=t<P.inv&&Math.floor(t/90)%2===0;
+    if(!blink)drawSprite(ctx,level.sprites.hero,P.px*T+T*.06,P.py*T+T*.06,T*.88,P.face<0);
+  }else{
+    ctx.fillStyle='rgba(0,0,0,.08)';
+    for(let i=1;i<W;i++)ctx.fillRect(i*T,0,1,H*T);
+    for(let i=1;i<H;i++)ctx.fillRect(0,i*T,W*T,1);
+  }
+}
+
+/* ---------- ääni ---------- */
+let actx=null;
+function beep(f,d,delay,type){
+  if(!soundOn)return;
+  try{actx=actx||new(window.AudioContext||window.webkitAudioContext)();const o=actx.createOscillator(),g=actx.createGain();o.type=type||'square';o.frequency.value=f;const t0=actx.currentTime+(delay||0);g.gain.setValueAtTime(.06,t0);g.gain.exponentialRampToValueAtTime(.0001,t0+d);o.connect(g);g.connect(actx.destination);o.start(t0);o.stop(t0+d+.02)}catch(e){}
+}
+$('#soundBtn').addEventListener('click',e=>{soundOn=!soundOn;e.currentTarget.setAttribute('aria-pressed',soundOn);e.currentTarget.textContent='Äänet: '+(soundOn?'päällä':'pois')});
+
+/* ---------- välilehdet ---------- */
+function setTab(name){
+  mode=name;
+  document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===name));
+  ['build','play','draw','save'].forEach(n=>$('#tab-'+n).hidden=n!==name);
+  $('#stageArea').hidden=!(name==='build'||name==='play');
+  $('#hud').hidden=name!=='play';
+  $('#stageBox').classList.toggle('playing',name==='play');
+  if(name==='play')startPlay();else{P=null;$('#overlay').hidden=true}
+  if(name==='draw')buildPix();
+  if(name==='save')refreshSave();
+  if(name==='build')refreshTools();
+}
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
+$('#testBtn').addEventListener('click',()=>setTab('play'));
+$('#ovBuild').addEventListener('click',()=>setTab('build'));
+
+function changed(){store('pelipaja-current',level)}
+
+/* ---------- rakenna ---------- */
+function icon(id){
+  const c=document.createElement('canvas');c.width=c.height=40;const x=c.getContext('2d');x.imageSmoothingEnabled=false;
+  const th=THEMES[level.theme];ground(x,0,0,40,th,0,0);
+  if(id===E){x.strokeStyle='#ff5d8f';x.lineWidth=5;x.beginPath();x.moveTo(8,8);x.lineTo(32,32);x.moveTo(32,8);x.lineTo(8,32);x.stroke()}
+  else thing(x,0,0,40,id,th,0,true);
+  return c.toDataURL();
+}
+function refreshTools(){
+  const box=$('#tools');box.innerHTML='';
+  TOOLS.forEach(tl=>{
+    const b=document.createElement('button');b.className='tool';b.setAttribute('aria-pressed',tl.id===tool);
+    b.innerHTML='<img alt="" src="'+icon(tl.id)+'"><span>'+tl.name+'</span>';
+    b.addEventListener('click',()=>{tool=tl.id;refreshTools()});box.appendChild(b);
+  });
+  $('#toolHint').textContent=TOOLS.find(t=>t.id===tool).hint;
+}
+function fillSettings(){
+  const sel=$('#lvTheme');sel.innerHTML='';
+  Object.keys(THEMES).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=THEMES[k].name;sel.appendChild(o)});
+  sel.value=level.theme;$('#lvMode').value=level.mode;$('#lvSpeed').value=level.speed;$('#lvLives').value=String(level.lives);$('#lvName').value=level.name;
+}
+$('#lvTheme').addEventListener('change',e=>{level.theme=e.target.value;refreshTools();changed()});
+$('#lvMode').addEventListener('change',e=>{level.mode=e.target.value;changed()});
+$('#lvSpeed').addEventListener('change',e=>{level.speed=e.target.value;changed()});
+$('#lvLives').addEventListener('change',e=>{level.lives=+e.target.value;changed()});
+$('#lvName').addEventListener('input',e=>{level.name=e.target.value||'Nimetön peli';changed()});
+
+let painting=false,lastCell=-1;
+function cellAt(e){const r=cv.getBoundingClientRect();const cx=Math.floor((e.clientX-r.left)/r.width*W),cy=Math.floor((e.clientY-r.top)/r.height*H);if(cx<0||cy<0||cx>=W||cy>=H)return -1;return cy*W+cx}
+function paint(i){
+  if(i<0||i===lastCell)return;lastCell=i;
+  if(tool===START)level.grid=level.grid.map(v=>v===START?E:v);
+  level.grid[i]=tool;changed();
+}
+cv.addEventListener('pointerdown',e=>{if(mode!=='build')return;painting=true;lastCell=-1;try{cv.setPointerCapture(e.pointerId)}catch(_){}paint(cellAt(e))});
+cv.addEventListener('pointermove',e=>{if(painting&&mode==='build')paint(cellAt(e))});
+['pointerup','pointercancel'].forEach(ev=>cv.addEventListener(ev,()=>{painting=false}));
+
+function twoStep(btn,label,action){
+  let armed=false,timer;
+  btn.addEventListener('click',()=>{
+    if(!armed){armed=true;const old=btn.textContent;btn.dataset.old=old;btn.textContent=label;timer=setTimeout(()=>{armed=false;btn.textContent=old},2500);return}
+    clearTimeout(timer);armed=false;btn.textContent=btn.dataset.old;action();
+  });
+}
+twoStep($('#clearBtn'),'Varmasti? Paina uudestaan',()=>{const l=emptyLevel();level.grid=l.grid;changed()});
+twoStep($('#sampleBtn'),'Korvataanko? Paina uudestaan',()=>{level=sampleLevel();fillSettings();refreshTools();changed()});
+
+/* ---------- pelaa ---------- */
+function startPlay(){
+  const g=level.grid.slice();let sx=-1,sy=-1;const en=[];
+  g.forEach((v,i)=>{const x=i%W,y=(i/W)|0;if(v===START){if(sx<0){sx=x;sy=y}g[i]=E}else if(v===MON){en.push({x,y,dir:1});g[i]=E}});
+  if(sx<0){const i=g.findIndex(v=>v===E);sx=i%W;sy=(i/W)|0;toast('Vinkki: lisää kenttään aloituspaikka')}
+  const coins=g.filter(v=>v===COIN).length;
+  P={g,px:sx,py:sy,sx,sy,en,coins,total:coins,lives:level.lives,status:'run',t0:performance.now(),elapsed:0,inv:0,last:performance.now(),face:1};
+  $('#overlay').hidden=true;
+}
+$('#restartBtn').addEventListener('click',startPlay);
+$('#ovAgain').addEventListener('click',startPlay);
+
+let toastT;
+function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,1800)}
+function enemyAt(x,y){return P.en.some(m=>m.x===x&&m.y===y)}
+function hit(){
+  const now=performance.now();if(now<P.inv||P.status!=='run')return;
+  P.lives--;beep(200,.15);beep(120,.25,.12);
+  if(P.lives<=0){P.status='lost';showOverlay('Auts!','Elämät loppuivat. Kokeile uudestaan!');return}
+  P.px=P.sx;P.py=P.sy;P.inv=now+1200;toast('Auts! Elämiä jäljellä: '+P.lives);
+}
+function showOverlay(title,text){$('#ovTitle').textContent=title;$('#ovText').textContent=text;$('#overlay').hidden=false}
+function move(dx,dy){
+  if(mode!=='play'||!P||P.status!=='run')return;
+  if(dx)P.face=dx;
+  const nx=P.px+dx,ny=P.py+dy;if(nx<0||ny<0||nx>=W||ny>=H)return;
+  const c=P.g[ny*W+nx];if(c===WALL){beep(90,.05);return}
+  P.px=nx;P.py=ny;
+  if(c===COIN){P.g[ny*W+nx]=E;P.coins--;beep(988,.07);beep(1319,.12,.07);if(P.coins===0&&P.total>0)toast('Kaikki kolikot! Nyt lipulle!')}
+  if(c===LAVA)return hit();
+  if(enemyAt(nx,ny))return hit();
+  if(c===GOAL){
+    if(P.coins>0)toast('Kerää vielä '+P.coins+(P.coins===1?' kolikko':' kolikkoa')+'!');
+    else{P.status='won';[523,659,784,1047].forEach((f,i)=>beep(f,.18,i*.12));showOverlay('Voitit!','Aikasi: '+Math.round(P.elapsed/1000)+' sekuntia')}
+  }
+}
+function blockedE(x,y,self){if(x<0||y<0||x>=W||y>=H)return true;const c=P.g[y*W+x];if(c===WALL||c===LAVA||c===GOAL)return true;return P.en.some(o=>o!==self&&o.x===x&&o.y===y)}
+function stepEnemies(){
+  for(const m of P.en){
+    if(level.mode==='jahtaa'){
+      const ddx=P.px-m.x,ddy=P.py-m.y,sx=Math.sign(ddx),sy=Math.sign(ddy),opts=[];
+      if(Math.abs(ddx)>=Math.abs(ddy)){if(sx)opts.push([sx,0]);if(sy)opts.push([0,sy])}else{if(sy)opts.push([0,sy]);if(sx)opts.push([sx,0])}
+      if(Math.random()<.3)opts.unshift([[1,0],[-1,0],[0,1],[0,-1]][Math.random()*4|0]);
+      opts.push([[1,0],[-1,0],[0,1],[0,-1]][Math.random()*4|0]);
+      for(const o of opts){if(!blockedE(m.x+o[0],m.y+o[1],m)){m.x+=o[0];m.y+=o[1];if(o[0])m.dir=o[0];break}}
+    }else{
+      const vx=level.mode==='vaaka'?m.dir:0,vy=level.mode==='pysty'?m.dir:0;
+      if(blockedE(m.x+vx,m.y+vy,m)){m.dir*=-1;if(!blockedE(m.x-vx,m.y-vy,m)){m.x-=vx;m.y-=vy}}
+      else{m.x+=vx;m.y+=vy}
+    }
+    if(m.x===P.px&&m.y===P.py){hit();if(P.status!=='run')return}
+  }
+}
+function hud(){
+  if(!P)return;
+  $('#hudCoins').textContent='Kolikot '+(P.total-P.coins)+'/'+P.total;
+  $('#hudLives').textContent='Elämät '+Math.max(0,P.lives);
+  $('#hudTime').textContent='Aika '+Math.floor(P.elapsed/1000)+' s';
+}
+function loop(now){
+  if(mode==='play'&&P){
+    if(P.status==='run'){P.elapsed=now-P.t0;if(now-P.last>SPEED[level.speed]){P.last=now;stepEnemies()}}
+    hud();
+  }
+  if(mode==='build'||mode==='play')render(now);
+  requestAnimationFrame(loop);
+}
+const KEYS={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],w:[0,-1],s:[0,1],a:[-1,0],d:[1,0],W:[0,-1],S:[0,1],A:[-1,0],D:[1,0]};
+document.addEventListener('keydown',e=>{
+  if(mode!=='play'||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;
+  const k=KEYS[e.key];if(k){e.preventDefault();move(k[0],k[1])}
+  else if((e.key==='Enter'||e.key===' ')&&P&&P.status!=='run'){e.preventDefault();startPlay()}
+});
+document.querySelectorAll('#pad button').forEach(b=>{
+  const [dx,dy]=b.dataset.d.split(',').map(Number);let rep=null,del=null;
+  const stop=()=>{clearTimeout(del);clearInterval(rep);rep=del=null};
+  b.addEventListener('pointerdown',e=>{e.preventDefault();stop();move(dx,dy);del=setTimeout(()=>{rep=setInterval(()=>move(dx,dy),150)},280)});
+  ['pointerup','pointerleave','pointercancel'].forEach(ev=>b.addEventListener(ev,stop));
+  b.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();move(dx,dy)}});
+});
+
+/* ---------- piirrä ---------- */
+function buildSwatches(){
+  const box=$('#sw');box.innerHTML='';
+  PKEYS.forEach(k=>{
+    const b=document.createElement('button');b.className='sw'+(PAL[k]?'':' clear');if(PAL[k])b.style.background=PAL[k];
+    b.setAttribute('aria-label',PAL[k]?'Väri '+PAL[k]:'Läpinäkyvä');b.setAttribute('aria-pressed',k===color);
+    b.addEventListener('click',()=>{color=k;buildSwatches()});box.appendChild(b);
+  });
+}
+function buildPix(){
+  const box=$('#pix');box.innerHTML='';const s=level.sprites[spKey];
+  for(let i=0;i<64;i++){const d=document.createElement('div');d.dataset.i=i;if(PAL[s[i]])d.style.background=PAL[s[i]];box.appendChild(d)}
+  drawPrev();
+}
+function drawPrev(){
+  const c=$('#spPrev').getContext('2d');c.imageSmoothingEnabled=false;const th=THEMES[level.theme];
+  for(let y=0;y<2;y++)for(let x=0;x<2;x++)ground(c,x*48,y*48,48,th,x,y);
+  drawSprite(c,level.sprites[spKey],8,8,80);
+}
+function setPix(i){
+  const s=level.sprites[spKey];if(s[i]===color)return;
+  level.sprites[spKey]=s.slice(0,i)+color+s.slice(i+1);
+  const d=$('#pix').children[i];d.style.background=PAL[color]||'';drawPrev();changed();
+}
+let drawing=false;
+function pixFrom(e){const el=document.elementFromPoint(e.clientX,e.clientY);return el&&el.parentElement===$('#pix')?+el.dataset.i:-1}
+$('#pix').addEventListener('pointerdown',e=>{drawing=true;const i=pixFrom(e);if(i>=0)setPix(i)});
+$('#pix').addEventListener('pointermove',e=>{if(drawing){const i=pixFrom(e);if(i>=0)setPix(i)}});
+window.addEventListener('pointerup',()=>drawing=false);
+document.querySelectorAll('#spSeg button').forEach(b=>b.addEventListener('click',()=>{
+  spKey=b.dataset.sp;document.querySelectorAll('#spSeg button').forEach(x=>x.setAttribute('aria-pressed',x===b));buildPix();
+}));
+twoStep($('#spClear'),'Varmasti?',()=>{level.sprites[spKey]='.'.repeat(64);buildPix();changed()});
+twoStep($('#spReset'),'Varmasti?',()=>{level.sprites[spKey]=spKey==='hero'?HERO_DEF:MON_DEF;buildPix();changed()});
+
+/* ---------- tallenna ---------- */
+function encode(l){return btoa(unescape(encodeURIComponent(JSON.stringify(l))))}
+function decode(s){return JSON.parse(decodeURIComponent(escape(atob(s.trim()))))}
+function savedAll(){const v=recall('pelipaja-saved');return Array.isArray(v)?v.filter(valid):[]}
+function refreshSave(){
+  $('#codeOut').value=encode(level);
+  const list=$('#savedList');list.innerHTML='';const all=savedAll();
+  if(!all.length){const li=document.createElement('li');li.className='empty';li.textContent='Ei vielä tallennettuja pelejä. Paina "Tallenna nykyinen peli".';list.appendChild(li);return}
+  all.forEach((l,idx)=>{
+    const li=document.createElement('li');const b=document.createElement('b');b.textContent=l.name+' · '+THEMES[l.theme].name;li.appendChild(b);
+    const act=document.createElement('div');act.className='actions';
+    const open=document.createElement('button');open.className='btn small sun';open.textContent='Avaa';
+    open.addEventListener('click',()=>{level=JSON.parse(JSON.stringify(l));fillSettings();changed();setTab('build');toast('Avattu: '+level.name)});
+    const del=document.createElement('button');del.className='btn small warn';del.textContent='Poista';
+    twoStep(del,'Varmasti?',()=>{const a=savedAll();a.splice(idx,1);store('pelipaja-saved',a);refreshSave()});
+    act.append(open,del);li.appendChild(act);list.appendChild(li);
+  });
+}
+$('#saveBtn').addEventListener('click',()=>{
+  const a=savedAll();const i=a.findIndex(x=>x.name===level.name);const copy=JSON.parse(JSON.stringify(level));
+  if(i>=0)a[i]=copy;else a.push(copy);store('pelipaja-saved',a);refreshSave();
+  $('#saveBtn').textContent='Tallennettu!';setTimeout(()=>$('#saveBtn').textContent='Tallenna nykyinen peli',1500);
+});
+twoStep($('#newBtn'),'Aloitetaanko alusta?',()=>{level=emptyLevel();fillSettings();changed();setTab('build')});
+$('#copyBtn').addEventListener('click',()=>{
+  const ta=$('#codeOut');const done=()=>{$('#copyBtn').textContent='Kopioitu!';setTimeout(()=>$('#copyBtn').textContent='Kopioi koodi',1500)};
+  try{navigator.clipboard.writeText(ta.value).then(done,()=>{ta.focus();ta.select()})}catch(e){ta.focus();ta.select()}
+});
+$('#loadCodeBtn').addEventListener('click',()=>{
+  const btn=$('#loadCodeBtn');
+  try{const l=decode($('#codeIn').value);if(!valid(l))throw 0;level=l;fillSettings();changed();$('#codeIn').value='';setTab('build')}
+  catch(e){btn.textContent='Koodi ei toiminut. Tarkista että kopioit kaiken.';setTimeout(()=>btn.textContent='Avaa peli koodista',2500)}
+});
+
+/* ---------- käynnistys ---------- */
+fillSettings();buildSwatches();refreshTools();
+requestAnimationFrame(loop);
+})();
+</script>
+
+</body>
+</html>
