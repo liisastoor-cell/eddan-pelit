@@ -107,6 +107,11 @@ textarea{min-height:88px;resize:vertical}
 .who b{font-size:14px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .who small{font-size:12px;color:var(--muted)}
 .who[aria-pressed="true"]{background:var(--sun)}
+[hidden]{display:none!important}
+.modepick{display:flex;flex-wrap:wrap;gap:8px}
+.modepick .chip{font-size:16px;padding:.5em 1.1em}
+.poster-look{border:3px dashed var(--ink);border-radius:12px;padding:14px 16px;font-size:18px;white-space:pre-line;background:var(--paper)}
+.poster-look .label{display:block;margin-bottom:4px}
 .who.add{border-style:dashed;justify-content:center;font-family:var(--display);font-size:15px;min-height:110px}
 .editor{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:18px}
 @media (max-width:640px){.editor{grid-template-columns:1fr}}
@@ -204,6 +209,11 @@ textarea{min-height:88px;resize:vertical}
       <div class="row"><button class="btn small sun" id="randPal">Arvo uudet värit</button></div>
     </div>
     <div class="field">
+      <span class="label">Miten teet maailman kuvan?</span>
+      <div class="modepick" id="wMode"><button class="chip" type="button" data-m="words">Kuvailen sanoin</button><button class="chip" type="button" data-m="draw">Piirrän itse</button></div>
+    </div>
+    <div id="wLookBox"><label class="field"><span class="label">Miltä maailma näyttää?</span><textarea id="gLook" placeholder="Kerro mitä näkyy. Esimerkiksi: taivas on violetti, maassa on vaaleanpunaista ruohoa, ja kaukana on linna jonka tornit ovat jäätelötötteröitä."></textarea></label></div>
+    <div class="field" id="wDrawBox">
       <span class="label">Piirrä pelin maailma</span>
       <div class="toolrow" id="wTools"></div>
       <div class="canvasbox"><canvas id="worldCv" width="600" height="375" aria-label="Piirtoalue pelin maailmalle"></canvas></div>
@@ -219,10 +229,10 @@ textarea{min-height:88px;resize:vertical}
   <!-- 3 HAHMOT -->
   <section class="page" id="p-cast" hidden>
     <h2>Keitä pelissä on?</h2>
-    <p class="hint">Tee sankari, viholliset, kaverit ja tavarat. Piirrä jokainen ruutu kerrallaan.</p>
+    <p class="hint">Tee sankari, viholliset, kaverit ja tavarat. Voit kuvailla ne sanoin tai piirtää ruutu kerrallaan.</p>
     <div class="cast" id="castList"></div>
     <div class="editor" id="charEditor">
-      <div class="side">
+      <div class="side" id="cDrawSide">
         <div class="pix" id="pix" aria-label="Hahmon piirtoruudukko 16 kertaa 16"></div>
         <div class="toolrow" id="pTools">
           <button class="btn small" data-pt="pen" aria-pressed="true">Kynä</button>
@@ -233,6 +243,9 @@ textarea{min-height:88px;resize:vertical}
       </div>
       <div class="side">
         <label class="field"><span class="label">Hahmon nimi</span><input type="text" id="cName" maxlength="30" placeholder="Esim. Pörrö"></label>
+        <div class="field"><span class="label">Miten teet hahmon kuvan?</span>
+          <div class="modepick" id="cMode"><button class="chip" type="button" data-m="words">Kuvailen sanoin</button><button class="chip" type="button" data-m="draw">Piirrän itse</button></div></div>
+        <div id="cLookBox"><label class="field"><span class="label">Miltä se näyttää?</span><textarea id="cLook" placeholder="Väri, koko, muoto, silmät, vaatteet. Esim. pieni pyöreä sininen pupu, jolla on punainen viitta ja tosi isot korvat."></textarea></label></div>
         <div class="field"><span class="label">Mikä se on pelissä?</span><div class="chips" id="cRole"></div></div>
         <label class="field"><span class="label">Mitä se osaa tai tekee?</span><textarea id="cCan" placeholder="Esim. hyppää tosi korkealle, mutta pelkää vettä."></textarea></label>
         <div class="row"><button class="btn small warn" id="cDel">Poista hahmo</button><button class="btn small" id="cWipe">Tyhjennä piirros</button></div>
@@ -286,15 +299,15 @@ const PROBS=['kaikki värit ovat kadonneet','ystävä on jäänyt jumiin','aika 
 const DIE_FACES={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 
 function newGame(){
-  return{id:uid(),name:'',idea:'',types:[],devices:[],place:'',mood:[],colors:['#ff5d8f','#ffd23f','#3fb6ff','#5fd6a8','#271f3d'],bg:'#ffffff',
+  return{id:uid(),name:'',idea:'',types:[],devices:[],place:'',mood:[],look:'',worldMode:'words',colors:['#ff5d8f','#ffd23f','#3fb6ff','#5fd6a8','#271f3d'],bg:'#ffffff',
     characters:[newChar('Sankari')],rules:{move:'',win:'',danger:'',collect:'',lose:'',sound:'',levels:''},updated:Date.now()};
 }
-function newChar(role){return{id:uid(),name:'',role:role||'Sankari',can:'',pixels:new Array(256).fill('')}}
+function newChar(role){return{id:uid(),name:'',role:role||'Sankari',can:'',look:'',mode:'words',pixels:new Array(256).fill('')}}
 function fix(g){
   const d=newGame();for(const k in d)if(g[k]===undefined)g[k]=d[k];
   g.rules=Object.assign(d.rules,g.rules||{});
   if(!Array.isArray(g.characters))g.characters=[];
-  g.characters.forEach(c=>{if(!Array.isArray(c.pixels)||c.pixels.length!==256)c.pixels=new Array(256).fill('')});
+  g.characters.forEach(c=>{if(!Array.isArray(c.pixels)||c.pixels.length!==256)c.pixels=new Array(256).fill('');if(c.look===undefined)c.look='';if(!c.mode)c.mode=c.pixels.some(Boolean)?'draw':'words'});
   return g;
 }
 
@@ -395,6 +408,11 @@ function bindText(id,get,set){$(id).addEventListener('input',e=>{set(e.target.va
 bindText('#gName',null,v=>cur().name=v);
 bindText('#gIdea',null,v=>cur().idea=v);
 bindText('#gPlace',null,v=>cur().place=v);
+bindText('#gLook',null,v=>cur().look=v);
+function renderWorldMode(){const m=cur().worldMode||'words';
+  document.querySelectorAll('#wMode .chip').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===m));
+  $('#wDrawBox').hidden=m!=='draw';$('#wLookBox').hidden=m!=='words'}
+document.querySelectorAll('#wMode .chip').forEach(b=>b.addEventListener('click',()=>{cur().worldMode=b.dataset.m;changed();renderWorldMode()}));
 [['#rMove','move'],['#rWin','win'],['#rDanger','danger'],['#rCollect','collect'],['#rLose','lose'],['#rSound','sound'],['#rLevels','levels']].forEach(([id,k])=>bindText(id,null,v=>cur().rules[k]=v));
 
 function chips(box,list,key){
@@ -491,6 +509,14 @@ async function loadWorld(){
 let charId=null,ptool='pen',pcolor=null;
 const curChar=()=>cur().characters.find(c=>c.id===charId);
 function charImg(c,size){
+  if(c.mode==='words'||!c.pixels.some(Boolean)){
+    const cv=document.createElement('canvas');cv.width=cv.height=64;const x=cv.getContext('2d');
+    const cols=cur().colors,i=Math.max(0,cur().characters.indexOf(c));
+    x.fillStyle=cols[i%4]||'#ff5d8f';x.beginPath();x.arc(32,32,29,0,Math.PI*2);x.fill();
+    x.lineWidth=4;x.strokeStyle=cols[4]||'#271f3d';x.stroke();
+    x.fillStyle=cols[4]||'#271f3d';x.font='bold 32px system-ui,sans-serif';x.textAlign='center';x.textBaseline='middle';
+    x.fillText(((c.name||'?').trim()[0]||'?').toUpperCase(),32,34);return cv.toDataURL();
+  }
   const cv=document.createElement('canvas');cv.width=cv.height=16;const x=cv.getContext('2d');
   c.pixels.forEach((col,i)=>{if(col){x.fillStyle=col;x.fillRect(i%16,i>>4,1,1)}});
   return cv.toDataURL();
@@ -512,7 +538,9 @@ function renderCast(){
 }
 function renderEditor(){
   const c=curChar();
-  $('#cName').value=c.name;$('#cCan').value=c.can;
+  $('#cName').value=c.name;$('#cCan').value=c.can;$('#cLook').value=c.look||'';
+  document.querySelectorAll('#cMode .chip').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===c.mode));
+  $('#cDrawSide').hidden=c.mode!=='draw';$('#cLookBox').hidden=c.mode!=='words';$('#cWipe').hidden=c.mode!=='draw';
   const rb=$('#cRole');rb.innerHTML='';
   ROLES.forEach(r=>{const b=document.createElement('button');b.className='chip';b.textContent=r;b.setAttribute('aria-pressed',c.role===r);
     b.addEventListener('click',()=>{c.role=r;changed();renderCast()});rb.appendChild(b)});
@@ -547,8 +575,10 @@ $('#pix').addEventListener('pointerdown',e=>{e.preventDefault();pdown=true;apply
 $('#pix').addEventListener('pointermove',e=>{if(pdown&&ptool!=='fill')applyAt(cellFrom(e))});
 window.addEventListener('pointerup',()=>{if(pdown){pdown=false;if(pdirty){pdirty=false;changed();updateThumb()}}});
 function updateThumb(){const i=cur().characters.findIndex(c=>c.id===charId);const el=$('#castList').children[i];if(el)el.querySelector('img').src=charImg(curChar())}
-$('#cName').addEventListener('input',e=>{curChar().name=e.target.value;changed();const i=cur().characters.findIndex(c=>c.id===charId);const el=$('#castList').children[i];if(el)el.querySelector('b').textContent=e.target.value||'Nimetön'});
+$('#cName').addEventListener('input',e=>{curChar().name=e.target.value;changed();const i=cur().characters.findIndex(c=>c.id===charId);const el=$('#castList').children[i];if(el){el.querySelector('b').textContent=e.target.value||'Nimetön';el.querySelector('img').src=charImg(curChar())}});
 $('#cCan').addEventListener('input',e=>{curChar().can=e.target.value;changed()});
+$('#cLook').addEventListener('input',e=>{curChar().look=e.target.value;changed()});
+document.querySelectorAll('#cMode .chip').forEach(b=>b.addEventListener('click',()=>{curChar().mode=b.dataset.m;changed();renderCast()}));
 twoStep($('#cDel'),'Varmasti? Paina uudestaan',()=>{const g=cur();g.characters=g.characters.filter(c=>c.id!==charId);charId=null;changed();renderCast()});
 twoStep($('#cWipe'),'Varmasti?',()=>{curChar().pixels=new Array(256).fill('');changed();renderEditor();updateThumb()});
 
@@ -569,13 +599,15 @@ function renderPoster(){
 
   const body=document.createElement('div');body.className='poster-body';
   if(txt(g.idea)){const q=document.createElement('p');q.style.margin='0';q.style.fontSize='19px';q.style.whiteSpace='pre-line';q.textContent=g.idea;body.appendChild(q)}
-  const img=document.createElement('img');img.className='poster-world';img.alt='Pelin maailma';img.style.background=g.bg;img.src=worldCv.toDataURL();body.appendChild(img);
+  if(g.worldMode==='draw'){const img=document.createElement('img');img.className='poster-world';img.alt='Pelin maailma';img.style.background=g.bg;img.src=worldCv.toDataURL();body.appendChild(img)}
+  else{const lk=document.createElement('div');lk.className='poster-look';const l=document.createElement('span');l.className='label';l.textContent='Miltä maailma näyttää';
+    const t=document.createElement('div');if(txt(g.look))t.textContent=g.look;else{t.textContent='Ei vielä kuvailtu';t.className='missing'}lk.append(l,t);body.appendChild(lk)}
   if(g.characters.length){
     const hc=document.createElement('h3');hc.textContent='Hahmot';body.appendChild(hc);
     const cast=document.createElement('div');cast.className='poster-cast';
     g.characters.forEach(c=>{const f=document.createElement('figure');const i=document.createElement('img');i.alt='';i.src=charImg(c);
       const cap=document.createElement('figcaption');const b=document.createElement('b');b.textContent=(c.name||'Nimetön')+' ';const r=document.createElement('span');r.className='label';r.textContent=c.role;
-      cap.append(b,r);if(c.can){const d=document.createElement('div');d.textContent=c.can;cap.appendChild(d)}
+      cap.append(b,r);if(c.mode==='words'&&c.look){const d=document.createElement('div');d.textContent=c.look;d.style.fontStyle='italic';cap.appendChild(d)}if(c.can){const d=document.createElement('div');d.textContent=c.can;cap.appendChild(d)}
       f.append(i,cap);cast.appendChild(f)});
     body.appendChild(cast);
   }
@@ -671,7 +703,7 @@ document.querySelectorAll('.step,[data-go]').forEach(b=>b.addEventListener('clic
 /* ---------- vienti ---------- */
 $('#exportBtn').addEventListener('click',()=>{
   const g=clone(cur());
-  g.characters.forEach(c=>{c.pixels=c.pixels.map(p=>p||'.').join(',')});
+  g.characters.forEach(c=>{if(c.mode==='words')delete c.pixels;else c.pixels=c.pixels.map(p=>p||'.').join(',')});if(g.worldMode==='words')g.worldNote='Maailma on kuvailtu sanoin kentässä look';
   const text='EDDAN PELISUUNNITELMA – rakenna peli tästä:\n'+JSON.stringify(g);
   const out=$('#exportOut'),btn=$('#exportBtn');out.value=text;
   const ok=()=>{btn.textContent='Kopioitu! Liitä se Claudelle';setTimeout(()=>btn.textContent='Kopioi suunnitelma Claudelle',2500)};
@@ -682,7 +714,7 @@ $('#exportBtn').addEventListener('click',()=>{
 /* ---------- lataus ---------- */
 function loadAll(){
   const g=cur();
-  $('#gName').value=g.name;$('#gIdea').value=g.idea;$('#gPlace').value=g.place;
+  $('#gName').value=g.name;$('#gIdea').value=g.idea;$('#gPlace').value=g.place;$('#gLook').value=g.look||'';renderWorldMode();
   $('#rMove').value=g.rules.move;$('#rWin').value=g.rules.win;$('#rDanger').value=g.rules.danger;$('#rCollect').value=g.rules.collect;$('#rLose').value=g.rules.lose;$('#rSound').value=g.rules.sound;$('#rLevels').value=g.rules.levels;
   chips('#cTypes',TYPES,'types');chips('#cDevices',DEVICES,'devices');chips('#cMood',MOODS,'mood');
   brush.color=null;renderPalette();renderWorldTools();loadWorld();
