@@ -1,0 +1,657 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Eddan Pelistudio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<style>
+/* Layout: a designer's sketchbook on graph paper — five numbered pages (idea → world → characters → rules → poster), one page open at a time. Single bright theme by choice. */
+:root{
+  --paper:#f6f9ff;
+  --grid:#dfe8fa;
+  --ink:#271f3d;
+  --card:#ffffff;
+  --pink:#ff5d8f;
+  --sky:#3fb6ff;
+  --sun:#ffd23f;
+  --mint:#5fd6a8;
+  --muted:#6b6487;
+  --display:"Bungee","Arial Black",Impact,sans-serif;
+  --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{background:var(--paper);color:var(--ink)}
+body{margin:0;
+  font-family:var(--body);font-size:17px;line-height:1.45;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:24px 24px;
+  padding-inline:16px;padding-block:18px 48px;
+}
+.wrap{max-width:820px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,7vw,46px);line-height:1;margin:0;text-wrap:balance}
+h1 span{color:var(--sky);-webkit-text-stroke:2px var(--ink);paint-order:stroke fill}
+.sub{margin:6px 0 0;color:var(--muted);max-width:52ch}
+h2{font-family:var(--display);font-weight:400;font-size:22px;margin:0;line-height:1.15;text-wrap:balance}
+h3{font-size:18px;margin:0}
+.label{font-size:13px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:var(--muted)}
+.hint{color:var(--muted);margin:0;font-size:15px;max-width:60ch}
+
+.gamebar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.chip-status{font-size:13px;font-weight:700;color:var(--muted);padding:.2em .7em;border:2px dashed var(--muted);border-radius:999px;white-space:nowrap}
+.chip-status.ok{color:#1f7a55;border-color:#1f7a55;border-style:solid}
+
+.btn{font-family:var(--display);font-size:15px;color:var(--ink);background:var(--card);border:3px solid var(--ink);border-radius:12px;padding:.5em .9em;box-shadow:0 4px 0 var(--ink);cursor:pointer;transition:transform .06s,box-shadow .06s;touch-action:manipulation}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+.btn.pink{background:var(--pink)}.btn.sun{background:var(--sun)}.btn.sky{background:var(--sky)}.btn.mint{background:var(--mint)}
+.btn.small{font-size:13px;padding:.38em .7em;box-shadow:0 3px 0 var(--ink)}
+.btn.warn{background:#ffd9d9}
+.btn[aria-pressed="true"]{background:var(--sun)}
+:focus-visible{outline:3px solid var(--sky);outline-offset:3px}
+
+.steps{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.step{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--card);border:3px solid var(--ink);border-radius:12px;padding:.45em .2em;cursor:pointer;color:var(--ink);font-family:var(--body);font-weight:700;font-size:clamp(11px,2.9vw,15px);min-width:0}
+.step b{font-family:var(--display);font-weight:400;font-size:clamp(18px,5vw,24px);line-height:1}
+.step[aria-selected="true"]{background:var(--sun);transform:translateY(-3px);box-shadow:0 5px 0 var(--ink)}
+.step span{overflow:hidden;text-overflow:ellipsis;max-width:100%;white-space:nowrap}
+
+.page{background:var(--card);border:3px solid var(--ink);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:20px;box-shadow:0 6px 0 var(--ink)}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+input[type=text],textarea,select{font:inherit;color:var(--ink);background:var(--paper);border:3px solid var(--ink);border-radius:12px;padding:.5em .7em;width:100%}
+textarea{min-height:88px;resize:vertical}
+#gName{font-family:var(--display);font-size:clamp(20px,5vw,28px)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font:inherit;font-weight:700;font-size:15px;color:var(--ink);background:var(--paper);border:2px solid var(--ink);border-radius:999px;padding:.35em .9em;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--pink);box-shadow:0 3px 0 var(--ink)}
+
+.dice{border:3px dashed var(--ink);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;background:#fffbea}
+.dice dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 12px}
+.dice dt{font-weight:700;color:var(--muted)}
+.dice dd{margin:0;font-weight:700;font-size:18px}
+.die{width:48px;height:48px;border:3px solid var(--ink);border-radius:10px;background:var(--card);display:grid;grid-template-columns:repeat(3,1fr);padding:6px;gap:2px}
+.die i{width:8px;height:8px;border-radius:50%;background:var(--ink);place-self:center;visibility:hidden}
+.die.roll{animation:spin .5s}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.die.roll{animation:none}.btn{transition:none}}
+
+.palette{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;max-width:420px}
+.palette label{display:flex;flex-direction:column;gap:4px;align-items:center;font-size:12px;font-weight:700;color:var(--muted)}
+.palette input[type=color]{width:100%;aspect-ratio:1;max-width:72px;border:3px solid var(--ink);border-radius:14px;padding:0;background:none;cursor:pointer}
+.palette input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+.palette input[type=color]::-webkit-color-swatch{border:none;border-radius:10px}
+.palette input[type=color]::-moz-color-swatch{border:none;border-radius:10px}
+
+.canvasbox{border:3px solid var(--ink);border-radius:12px;overflow:hidden;line-height:0}
+#worldCv{width:100%;height:auto;display:block;touch-action:none;cursor:crosshair}
+.toolrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.sw{width:40px;height:40px;border:3px solid var(--ink);border-radius:10px;cursor:pointer;padding:0;flex:none}
+.sw[aria-pressed="true"]{outline:3px solid var(--pink);outline-offset:2px}
+.sw.clear{background:repeating-linear-gradient(45deg,#fff 0 6px,#e5e0ef 6px 12px)}
+.size{width:40px;height:40px;border:3px solid var(--ink);border-radius:10px;background:var(--card);cursor:pointer;display:grid;place-items:center;padding:0}
+.size i{display:block;border-radius:50%;background:var(--ink)}
+.size[aria-pressed="true"]{background:var(--sun)}
+.sep{width:2px;height:32px;background:var(--grid);flex:none}
+
+.cast{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}
+.who{display:flex;flex-direction:column;align-items:center;gap:4px;border:3px solid var(--ink);border-radius:12px;padding:8px 4px;background:var(--paper);cursor:pointer;font:inherit;color:var(--ink);min-width:0}
+.who img{width:64px;height:64px;image-rendering:pixelated}
+.who b{font-size:14px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.who small{font-size:12px;color:var(--muted)}
+.who[aria-pressed="true"]{background:var(--sun)}
+.who.add{border-style:dashed;justify-content:center;font-family:var(--display);font-size:15px;min-height:110px}
+.editor{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:18px}
+@media (max-width:640px){.editor{grid-template-columns:1fr}}
+.pix{display:grid;grid-template-columns:repeat(16,1fr);width:100%;max-width:340px;aspect-ratio:1;border:3px solid var(--ink);border-radius:8px;overflow:hidden;touch-action:none;
+  background-image:linear-gradient(45deg,#ece8f4 25%,transparent 25%,transparent 75%,#ece8f4 75%),linear-gradient(45deg,#ece8f4 25%,#fff 25%,#fff 75%,#ece8f4 75%);background-size:20px 20px;background-position:0 0,10px 10px}
+.pix div{border-right:1px solid rgba(39,31,61,.1);border-bottom:1px solid rgba(39,31,61,.1)}
+.side{display:flex;flex-direction:column;gap:12px;min-width:0}
+
+.poster{border:4px solid var(--ink);border-radius:18px;overflow:hidden;background:var(--paper)}
+.poster-top{padding:22px 20px;display:flex;flex-direction:column;gap:8px;color:var(--ink)}
+.poster-top h2{font-size:clamp(28px,8vw,48px)}
+.poster-body{padding:20px;display:flex;flex-direction:column;gap:18px;background:var(--card);border-top:4px solid var(--ink)}
+.poster-world{border:3px solid var(--ink);border-radius:12px;width:100%;display:block}
+.poster-cast{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.poster-cast figure{margin:0;display:flex;gap:10px;align-items:center;min-width:0}
+.poster-cast img{width:56px;height:56px;image-rendering:pixelated;border:2px solid var(--ink);border-radius:8px;background:var(--paper);flex:none}
+.poster-cast figcaption{min-width:0;font-size:14px;overflow-wrap:anywhere}
+.poster dl{margin:0;display:grid;grid-template-columns:minmax(0,10em) minmax(0,1fr);gap:8px 14px}
+.poster dt{font-weight:700;color:var(--muted)}
+.poster dd{margin:0;overflow-wrap:anywhere}
+@media (max-width:520px){.poster dl{grid-template-columns:1fr}.poster dd{margin-bottom:6px}}
+.poster-swatches{display:flex;gap:6px}
+.poster-swatches i{width:28px;height:28px;border-radius:8px;border:2px solid var(--ink)}
+.missing{color:var(--muted);font-style:italic}
+.next{border:3px dashed var(--ink);border-radius:14px;padding:16px;background:#eafaf3;display:flex;flex-direction:column;gap:8px}
+.next p{margin:0}
+.navrow{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.mic{align-self:flex-start;display:inline-flex;align-items:center;gap:8px;font-family:var(--display);font-size:14px;color:var(--ink);background:var(--card);border:3px solid var(--ink);border-radius:999px;padding:.35em 1em .35em .6em;box-shadow:0 3px 0 var(--ink);cursor:pointer;touch-action:manipulation}
+.mic svg{width:22px;height:22px;flex:none}
+.mic:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
+.mic.on{background:var(--pink);animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 3px 0 var(--ink),0 0 0 8px rgba(255,93,143,.25)}}
+@media (prefers-reduced-motion:reduce){.mic.on{animation:none}}
+.fieldwrap{display:flex;flex-direction:column;gap:8px;min-width:0}
+.talkhelp{border:3px solid var(--ink);border-radius:14px;background:#fff3f7;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.talkhelp p{margin:0}
+.talkhelp ul{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:4px}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Eddan <span>Pelistudio</span></h1>
+      <p class="sub">Keksi oma peli alusta asti: idea, maailma, hahmot ja säännöt. Lopuksi siitä tulee pelijuliste.</p>
+    </div>
+    <div class="gamebar">
+      <select id="gamePick" aria-label="Valitse peli"></select>
+      <button class="btn small sky" id="newGame">Uusi peli</button>
+      <span class="chip-status" id="saveState">Tallennetaan tälle laitteelle</span>
+    </div>
+  </header>
+
+  <nav class="steps" role="tablist">
+    <button class="step" role="tab" data-p="idea" aria-selected="true"><b>1</b><span>Idea</span></button>
+    <button class="step" role="tab" data-p="world" aria-selected="false"><b>2</b><span>Maailma</span></button>
+    <button class="step" role="tab" data-p="cast" aria-selected="false"><b>3</b><span>Hahmot</span></button>
+    <button class="step" role="tab" data-p="rules" aria-selected="false"><b>4</b><span>Säännöt</span></button>
+    <button class="step" role="tab" data-p="poster" aria-selected="false"><b>5</b><span>Juliste</span></button>
+  </nav>
+
+  <!-- 1 IDEA -->
+  <section class="page" id="p-idea">
+    <h2>Mikä on sinun pelisi idea?</h2>
+    <label class="field"><span class="label">Pelin nimi</span><input type="text" id="gName" maxlength="50" placeholder="Keksi pelille nimi"></label>
+    <label class="field"><span class="label">Mistä pelissä on kyse?</span><textarea id="gIdea" placeholder="Kerro omin sanoin. Kuka on pelin sankari? Mitä hänen pitää tehdä?"></textarea></label>
+    <div class="dice">
+      <div class="row" style="justify-content:space-between">
+        <div><h3>Ideanoppa</h3><p class="hint">Jos idea ei tule heti, heitä noppaa ja katso mitä syntyy.</p></div>
+        <div class="die" id="die" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      </div>
+      <dl>
+        <dt>Sankari</dt><dd id="dHero"></dd>
+        <dt>Paikka</dt><dd id="dPlace"></dd>
+        <dt>Ongelma</dt><dd id="dProb"></dd>
+      </dl>
+      <div class="row">
+        <button class="btn sun" id="rollBtn">Heitä noppaa</button>
+        <button class="btn small" id="useDice">Lisää ideaan</button>
+      </div>
+    </div>
+    <div class="field"><span class="label">Millainen peli? Valitse yksi tai monta</span><div class="chips" id="cTypes"></div></div>
+    <div class="field"><span class="label">Millä pelataan?</span><div class="chips" id="cDevices"></div></div>
+    <div class="navrow"><span></span><button class="btn pink" data-go="world">Seuraavaksi maailma</button></div>
+  </section>
+
+  <!-- 2 MAAILMA -->
+  <section class="page" id="p-world" hidden>
+    <h2>Millainen pelin maailma on?</h2>
+    <label class="field"><span class="label">Missä peli tapahtuu?</span><textarea id="gPlace" placeholder="Esimerkiksi: metsässä, jossa puut ovat karkkia ja joki on mehua."></textarea></label>
+    <div class="field"><span class="label">Millainen tunnelma?</span><div class="chips" id="cMood"></div></div>
+    <div class="field">
+      <span class="label">Pelin omat värit</span>
+      <p class="hint">Oikeat pelisuunnittelijat valitsevat ensin muutaman värin, joita käytetään kaikkialla. Napauta väriä vaihtaaksesi sitä.</p>
+      <div class="palette" id="palette"></div>
+      <div class="row"><button class="btn small sun" id="randPal">Arvo uudet värit</button></div>
+    </div>
+    <div class="field">
+      <span class="label">Piirrä pelin maailma</span>
+      <div class="toolrow" id="wTools"></div>
+      <div class="canvasbox"><canvas id="worldCv" width="600" height="375" aria-label="Piirtoalue pelin maailmalle"></canvas></div>
+      <div class="toolrow">
+        <button class="btn small" id="wUndo">Kumoa</button>
+        <span class="label">Tausta</span><div class="toolrow" id="wBg"></div>
+        <button class="btn small warn" id="wClear">Tyhjennä</button>
+      </div>
+    </div>
+    <div class="navrow"><button class="btn small" data-go="idea">Takaisin</button><button class="btn pink" data-go="cast">Seuraavaksi hahmot</button></div>
+  </section>
+
+  <!-- 3 HAHMOT -->
+  <section class="page" id="p-cast" hidden>
+    <h2>Keitä pelissä on?</h2>
+    <p class="hint">Tee sankari, viholliset, kaverit ja tavarat. Piirrä jokainen ruutu kerrallaan.</p>
+    <div class="cast" id="castList"></div>
+    <div class="editor" id="charEditor">
+      <div class="side">
+        <div class="pix" id="pix" aria-label="Hahmon piirtoruudukko 16 kertaa 16"></div>
+        <div class="toolrow" id="pTools">
+          <button class="btn small" data-pt="pen" aria-pressed="true">Kynä</button>
+          <button class="btn small" data-pt="fill" aria-pressed="false">Täyttö</button>
+          <button class="btn small" data-pt="erase" aria-pressed="false">Kumi</button>
+        </div>
+        <div class="toolrow" id="pColors"></div>
+      </div>
+      <div class="side">
+        <label class="field"><span class="label">Hahmon nimi</span><input type="text" id="cName" maxlength="30" placeholder="Esim. Pörrö"></label>
+        <div class="field"><span class="label">Mikä se on pelissä?</span><div class="chips" id="cRole"></div></div>
+        <label class="field"><span class="label">Mitä se osaa tai tekee?</span><textarea id="cCan" placeholder="Esim. hyppää tosi korkealle, mutta pelkää vettä."></textarea></label>
+        <div class="row"><button class="btn small warn" id="cDel">Poista hahmo</button><button class="btn small" id="cWipe">Tyhjennä piirros</button></div>
+      </div>
+    </div>
+    <div class="navrow"><button class="btn small" data-go="world">Takaisin</button><button class="btn pink" data-go="rules">Seuraavaksi säännöt</button></div>
+  </section>
+
+  <!-- 4 SÄÄNNÖT -->
+  <section class="page" id="p-rules" hidden>
+    <h2>Miten peliä pelataan?</h2>
+    <div class="cols">
+      <label class="field"><span class="label">Miten sankari liikkuu?</span><textarea id="rMove" placeholder="Nuolinäppäimillä? Napauttamalla? Hyppiikö se?"></textarea></label>
+      <label class="field"><span class="label">Miten pelin voittaa?</span><textarea id="rWin" placeholder="Mitä pitää saada tehtyä?"></textarea></label>
+      <label class="field"><span class="label">Mikä on vaarallista?</span><textarea id="rDanger" placeholder="Mitä pitää väistellä?"></textarea></label>
+      <label class="field"><span class="label">Mitä pelissä kerätään?</span><textarea id="rCollect" placeholder="Tähtiä, avaimia, kukkia…"></textarea></label>
+      <label class="field"><span class="label">Mitä tapahtuu, jos epäonnistuu?</span><textarea id="rLose" placeholder="Aloitetaanko alusta? Onko elämiä?"></textarea></label>
+      <label class="field"><span class="label">Millaisia ääniä ja musiikkia?</span><textarea id="rSound" placeholder="Iloista pianoa? Pimahtava ääni kun saa kolikon?"></textarea></label>
+    </div>
+    <label class="field"><span class="label">Kentät ja tasot</span><textarea id="rLevels" placeholder="Kenttä 1: … Kenttä 2: … Mikä muuttuu vaikeammaksi?"></textarea></label>
+    <div class="navrow"><button class="btn small" data-go="cast">Takaisin</button><button class="btn pink" data-go="poster">Katso juliste</button></div>
+  </section>
+
+  <!-- 5 JULISTE -->
+  <section class="page" id="p-poster" hidden>
+    <div class="poster" id="poster"></div>
+    <div class="next">
+      <h3>Seuraava askel: peli oikeasti toimimaan</h3>
+      <p>Kun suunnitelma tuntuu valmiilta, pyydä äitiä kertomaan Claudelle: "Rakenna peli Eddan suunnitelmasta." Claude lukee tämän julisteen, tekee pelistä ensimmäisen version, ja sitten sitä testataan ja parannetaan yhdessä.</p>
+      <div class="row"><button class="btn small mint" id="exportBtn" type="button">Kopioi suunnitelma Claudelle</button></div>
+      <textarea id="exportOut" readonly hidden aria-label="Suunnitelma kopioitavaksi"></textarea>
+    </div>
+    <div class="navrow"><button class="btn small" data-go="rules">Takaisin</button><button class="btn small sky" data-go="idea">Takaisin alkuun</button></div>
+  </section>
+</div>
+
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
+const clone=o=>JSON.parse(JSON.stringify(o));
+
+const TYPES=['Seikkailu','Tasohyppely','Labyrintti','Keräily','Pulmapeli','Lentäminen','Juoksupeli','Kilpa-ajo','Rakentaminen','Eläinten hoito','Piilosleikki','Musiikkipeli'];
+const DEVICES=['Tietokone','Tabletti','Puhelin'];
+const MOODS=['Iloinen','Jännittävä','Salaperäinen','Hassu','Rauhallinen','Pelottava','Satumainen','Vauhdikas'];
+const ROLES=['Sankari','Vihollinen','Kaveri','Esine','Muu'];
+const BASIC=['#000000','#ffffff','#f2c19a','#a8714a','#6b6b6b','#e8475f','#ffd23f','#3fbf5f','#2f6fd0'];
+const HEROES=['kissa joka osaa lentää','pieni robotti','noita jolla on liian iso hattu','hevonen avaruudessa','sukeltava pingviini','lohikäärmeen poikanen','salapoliisihiiri','rullaluisteleva mummo','yksisarvinen joka pelkää pimeää','jäätelötötterö jolla on jalat','unelias karhu','taikuri joka on unohtanut temppunsa'];
+const PLACES=['karkkimetsä','vedenalainen kaupunki','pilvilinna','vanha kartano','tulivuoren sisus','jättiläisen keittiö','lumimyrsky','kuun takapuoli','viidakon puiden latvat','koulun käytävät yöllä','leluhylly','kukkaniitty jossa kukat puhuvat'];
+const PROBS=['kaikki värit ovat kadonneet','ystävä on jäänyt jumiin','aika on jäätynyt','aarrekartta on revitty palasiksi','myrsky lähestyy','syntymäpäiväkakku on kadonnut','valot sammuvat yksi kerrallaan','portaat liikkuvat itsestään','musiikki on lakannut soimasta','lemmikit ovat karanneet','kotiin pitää ehtiä ennen pimeää','joku on kutistanut kaiken'];
+const DIE_FACES={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+
+function newGame(){
+  return{id:uid(),name:'',idea:'',types:[],devices:[],place:'',mood:[],colors:['#ff5d8f','#ffd23f','#3fb6ff','#5fd6a8','#271f3d'],bg:'#ffffff',
+    characters:[newChar('Sankari')],rules:{move:'',win:'',danger:'',collect:'',lose:'',sound:'',levels:''},updated:Date.now()};
+}
+function newChar(role){return{id:uid(),name:'',role:role||'Sankari',can:'',pixels:new Array(256).fill('')}}
+function fix(g){
+  const d=newGame();for(const k in d)if(g[k]===undefined)g[k]=d[k];
+  g.rules=Object.assign(d.rules,g.rules||{});
+  if(!Array.isArray(g.characters))g.characters=[];
+  g.characters.forEach(c=>{if(!Array.isArray(c.pixels)||c.pixels.length!==256)c.pixels=new Array(256).fill('')});
+  return g;
+}
+
+/* ---------- tallennus ---------- */
+function lsGet(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
+let games=(lsGet('studio-games')||[]).map(fix);
+if(!games.length)games=[newGame()];
+let curId=lsGet('studio-current');
+if(!games.some(g=>g.id===curId))curId=games[0].id;
+let db=null;
+const cur=()=>games.find(g=>g.id===curId);
+
+function setStatus(text,ok){const s=$('#saveState');s.textContent=text;s.classList.toggle('ok',!!ok)}
+let saveT=null;
+function changed(){
+  const g=cur();g.updated=Date.now();
+  lsSet('studio-games',games);lsSet('studio-current',curId);
+  if(db){setStatus('Tallennetaan…');clearTimeout(saveT);saveT=setTimeout(saveRemote,900)}
+  refreshPicker();
+}
+let saving=false,again=false;
+async function saveRemote(){
+  if(!db)return;
+  if(saving){again=true;return}
+  saving=true;
+  try{await db.doc('games/'+curId).set(clone(cur()));setStatus('Tallennettu',true)}
+  catch(e){setStatus('Tallennettu vain tälle laitteelle')}
+  saving=false;if(again){again=false;saveRemote()}
+}
+let artT=null;
+function artChanged(){
+  const url=worldCv.toDataURL('image/png');
+  try{localStorage.setItem('studio-art-'+curId,url)}catch(e){}
+  if(db){setStatus('Tallennetaan…');clearTimeout(artT);const id=curId;artT=setTimeout(async()=>{
+    try{await db.doc('games/'+id+'/art/world').set({png:url,updated:Date.now()});setStatus('Tallennettu',true)}catch(e){setStatus('Piirros tallessa vain tällä laitteella')}
+  },1200)}
+}
+async function loadArt(id){
+  let url=null;try{url=localStorage.getItem('studio-art-'+id)}catch(e){}
+  if(db){try{const s=await db.doc('games/'+id+'/art/world').get();if(s.exists&&s.data().png)url=s.data().png}catch(e){}}
+  return url;
+}
+
+(async()=>{
+  try{
+    if(!window.claude||!window.claude.use)return;
+    const d=await window.claude.use('db');if(!d)return;
+    db=d;
+    const snap=await db.collection('games').get();
+    const remote=snap.docs.filter(x=>x.exists).map(x=>fix(clone(x.data())));
+    if(remote.length){
+      const ids=new Set(remote.map(g=>g.id));
+      const localOnly=games.filter(g=>!ids.has(g.id)&&(g.name||g.idea||g.place));
+      for(const g of localOnly){try{await db.doc('games/'+g.id).set(clone(g))}catch(e){}}
+      games=remote.concat(localOnly);
+      if(!games.some(g=>g.id===curId))curId=games.slice().sort((a,b)=>b.updated-a.updated)[0].id;
+      lsSet('studio-games',games);
+      loadAll();
+    }else{
+      for(const g of games){await db.doc('games/'+g.id).set(clone(g))}
+    }
+    setStatus('Tallennettu',true);
+  }catch(e){setStatus('Tallennetaan tälle laitteelle')}
+})();
+
+/* ---------- pelivalitsin ---------- */
+function refreshPicker(){
+  const sel=$('#gamePick');const v=curId;sel.innerHTML='';
+  games.forEach(g=>{const o=document.createElement('option');o.value=g.id;o.textContent=g.name||'Nimetön peli';sel.appendChild(o)});
+  sel.value=v;
+}
+$('#gamePick').addEventListener('change',e=>{curId=e.target.value;lsSet('studio-current',curId);loadAll()});
+$('#newGame').addEventListener('click',()=>{const g=newGame();games.push(g);curId=g.id;changed();loadAll();go('idea');$('#gName').focus()});
+
+/* ---------- sivut ---------- */
+const PAGES=['idea','world','cast','rules','poster'];
+function go(p){
+  PAGES.forEach(n=>$('#p-'+n).hidden=n!==p);
+  document.querySelectorAll('.step').forEach(b=>b.setAttribute('aria-selected',b.dataset.p===p));
+  if(p==='poster')renderPoster();
+  if(p==='cast')renderCast();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+document.querySelectorAll('.step').forEach(b=>b.addEventListener('click',()=>go(b.dataset.p)));
+document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.go)));
+
+function twoStep(btn,label,action){
+  let armed=false,t;const orig=btn.textContent;
+  btn.addEventListener('click',()=>{
+    if(!armed){armed=true;btn.textContent=label;t=setTimeout(()=>{armed=false;btn.textContent=orig},2500);return}
+    clearTimeout(t);armed=false;btn.textContent=orig;action();
+  });
+}
+
+/* ---------- 1 idea ---------- */
+function bindText(id,get,set){$(id).addEventListener('input',e=>{set(e.target.value);changed()})}
+bindText('#gName',null,v=>cur().name=v);
+bindText('#gIdea',null,v=>cur().idea=v);
+bindText('#gPlace',null,v=>cur().place=v);
+[['#rMove','move'],['#rWin','win'],['#rDanger','danger'],['#rCollect','collect'],['#rLose','lose'],['#rSound','sound'],['#rLevels','levels']].forEach(([id,k])=>bindText(id,null,v=>cur().rules[k]=v));
+
+function chips(box,list,key){
+  const el=$(box);el.innerHTML='';
+  list.forEach(t=>{
+    const b=document.createElement('button');b.className='chip';b.textContent=t;
+    const arr=cur()[key];b.setAttribute('aria-pressed',arr.includes(t));
+    b.addEventListener('click',()=>{const a=cur()[key];const i=a.indexOf(t);if(i>=0)a.splice(i,1);else a.push(t);b.setAttribute('aria-pressed',i<0);changed()});
+    el.appendChild(b);
+  });
+}
+const pick=a=>a[Math.random()*a.length|0];
+let dice={hero:pick(HEROES),place:pick(PLACES),prob:pick(PROBS)};
+function showDice(n){
+  $('#dHero').textContent=dice.hero;$('#dPlace').textContent=dice.place;$('#dProb').textContent=dice.prob;
+  const pips=$('#die').children;const on=DIE_FACES[n||5];for(let i=0;i<9;i++)pips[i].style.visibility=on.includes(i)?'visible':'hidden';
+}
+$('#rollBtn').addEventListener('click',()=>{
+  dice={hero:pick(HEROES),place:pick(PLACES),prob:pick(PROBS)};
+  const d=$('#die');d.classList.remove('roll');void d.offsetWidth;d.classList.add('roll');showDice(1+(Math.random()*6|0));
+});
+$('#useDice').addEventListener('click',()=>{
+  const g=cur();const line='Sankari on '+dice.hero+'. Peli tapahtuu paikassa: '+dice.place+'. Ongelma: '+dice.prob+'.';
+  g.idea=(g.idea?g.idea.trim()+'\n':'')+line;$('#gIdea').value=g.idea;changed();
+  const b=$('#useDice');b.textContent='Lisätty!';setTimeout(()=>b.textContent='Lisää ideaan',1400);
+});
+
+/* ---------- 2 maailma ---------- */
+function hsl2hex(h,s,l){s/=100;l/=100;const k=n=>(n+h/30)%12,a=s*Math.min(l,1-l),f=n=>l-a*Math.max(-1,Math.min(k(n)-3,Math.min(9-k(n),1)));return'#'+[f(0),f(8),f(4)].map(x=>Math.round(x*255).toString(16).padStart(2,'0')).join('')}
+const PAL_NAMES=['Pääväri','Toinen','Vastaväri','Vaalea','Tumma'];
+function renderPalette(){
+  const box=$('#palette');box.innerHTML='';
+  cur().colors.forEach((c,i)=>{
+    const l=document.createElement('label');const inp=document.createElement('input');inp.type='color';inp.value=c;inp.id='pal'+i;
+    inp.addEventListener('input',e=>{cur().colors[i]=e.target.value;changed();renderWorldTools();renderCharColors()});
+    l.appendChild(inp);l.appendChild(document.createTextNode(PAL_NAMES[i]));box.appendChild(l);
+  });
+}
+$('#randPal').addEventListener('click',()=>{
+  const h=Math.random()*360|0;
+  cur().colors=[hsl2hex(h,75,58),hsl2hex((h+35)%360,80,66),hsl2hex((h+180)%360,65,52),hsl2hex((h+20)%360,55,88),hsl2hex((h+250)%360,35,22)];
+  changed();renderPalette();renderWorldTools();renderCharColors();
+});
+
+const worldCv=$('#worldCv'),wctx=worldCv.getContext('2d');
+let brush={color:null,size:12,erase:false};
+const SIZES=[5,12,26];
+function worldColors(){return cur().colors.concat(['#000000','#ffffff'])}
+function renderWorldTools(){
+  const box=$('#wTools');box.innerHTML='';
+  if(!brush.color)brush.color=cur().colors[0];
+  worldColors().forEach(c=>{
+    const b=document.createElement('button');b.className='sw';b.style.background=c;b.setAttribute('aria-label','Väri '+c);
+    b.setAttribute('aria-pressed',!brush.erase&&brush.color===c);
+    b.addEventListener('click',()=>{brush.color=c;brush.erase=false;renderWorldTools()});box.appendChild(b);
+  });
+  const s1=document.createElement('span');s1.className='sep';box.appendChild(s1);
+  SIZES.forEach(s=>{
+    const b=document.createElement('button');b.className='size';b.setAttribute('aria-label','Sivellin '+s);b.setAttribute('aria-pressed',brush.size===s);
+    const i=document.createElement('i');const d=Math.max(6,Math.round(s*0.9));i.style.width=i.style.height=d+'px';b.appendChild(i);
+    b.addEventListener('click',()=>{brush.size=s;renderWorldTools()});box.appendChild(b);
+  });
+  const er=document.createElement('button');er.className='btn small';er.textContent='Kumi';er.setAttribute('aria-pressed',brush.erase);
+  er.addEventListener('click',()=>{brush.erase=!brush.erase;renderWorldTools()});box.appendChild(er);
+  const bg=$('#wBg');bg.innerHTML='';
+  worldColors().forEach(c=>{
+    const b=document.createElement('button');b.className='sw';b.style.background=c;b.setAttribute('aria-label','Taustaväri '+c);b.setAttribute('aria-pressed',cur().bg===c);
+    b.addEventListener('click',()=>{cur().bg=c;worldCv.style.background=c;changed();renderWorldTools()});bg.appendChild(b);
+  });
+}
+let undo=[],drawingW=false,lastP=null;
+function cvPoint(e){const r=worldCv.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width*worldCv.width,y:(e.clientY-r.top)/r.height*worldCv.height}}
+function stroke(a,b){
+  wctx.save();wctx.globalCompositeOperation=brush.erase?'destination-out':'source-over';
+  wctx.strokeStyle=brush.color;wctx.fillStyle=brush.color;wctx.lineWidth=brush.size*(brush.erase?1.6:1);wctx.lineCap='round';wctx.lineJoin='round';
+  wctx.beginPath();wctx.moveTo(a.x,a.y);wctx.lineTo(b.x+.01,b.y);wctx.stroke();wctx.restore();
+}
+worldCv.addEventListener('pointerdown',e=>{
+  e.preventDefault();drawingW=true;try{worldCv.setPointerCapture(e.pointerId)}catch(_){}
+  try{undo.push(wctx.getImageData(0,0,worldCv.width,worldCv.height));if(undo.length>20)undo.shift()}catch(_){}
+  lastP=cvPoint(e);stroke(lastP,lastP);
+});
+worldCv.addEventListener('pointermove',e=>{if(!drawingW)return;const p=cvPoint(e);stroke(lastP,p);lastP=p});
+['pointerup','pointercancel'].forEach(ev=>worldCv.addEventListener(ev,()=>{if(drawingW){drawingW=false;artChanged()}}));
+$('#wUndo').addEventListener('click',()=>{const d=undo.pop();if(d){wctx.putImageData(d,0,0);artChanged()}});
+twoStep($('#wClear'),'Varmasti?',()=>{try{undo.push(wctx.getImageData(0,0,worldCv.width,worldCv.height))}catch(_){}wctx.clearRect(0,0,worldCv.width,worldCv.height);artChanged()});
+async function loadWorld(){
+  const id=curId;wctx.clearRect(0,0,worldCv.width,worldCv.height);undo=[];worldCv.style.background=cur().bg;
+  const url=await loadArt(id);if(!url||id!==curId)return;
+  const img=new Image();img.onload=()=>{if(id===curId){wctx.clearRect(0,0,worldCv.width,worldCv.height);wctx.drawImage(img,0,0,worldCv.width,worldCv.height)}};img.src=url;
+}
+
+/* ---------- 3 hahmot ---------- */
+let charId=null,ptool='pen',pcolor=null;
+const curChar=()=>cur().characters.find(c=>c.id===charId);
+function charImg(c,size){
+  const cv=document.createElement('canvas');cv.width=cv.height=16;const x=cv.getContext('2d');
+  c.pixels.forEach((col,i)=>{if(col){x.fillStyle=col;x.fillRect(i%16,i>>4,1,1)}});
+  return cv.toDataURL();
+}
+function renderCast(){
+  const g=cur();if(!g.characters.some(c=>c.id===charId))charId=g.characters[0]?g.characters[0].id:null;
+  const box=$('#castList');box.innerHTML='';
+  g.characters.forEach(c=>{
+    const b=document.createElement('button');b.className='who';b.setAttribute('aria-pressed',c.id===charId);
+    const img=document.createElement('img');img.alt='';img.src=charImg(c);
+    const n=document.createElement('b');n.textContent=c.name||'Nimetön';const r=document.createElement('small');r.textContent=c.role;
+    b.append(img,n,r);b.addEventListener('click',()=>{charId=c.id;renderCast()});box.appendChild(b);
+  });
+  const add=document.createElement('button');add.className='who add';add.textContent='+ Uusi hahmo';
+  add.addEventListener('click',()=>{const c=newChar(g.characters.length?'Vihollinen':'Sankari');g.characters.push(c);charId=c.id;changed();renderCast();$('#cName').focus()});
+  box.appendChild(add);
+  $('#charEditor').hidden=!charId;
+  if(charId)renderEditor();
+}
+function renderEditor(){
+  const c=curChar();
+  $('#cName').value=c.name;$('#cCan').value=c.can;
+  const rb=$('#cRole');rb.innerHTML='';
+  ROLES.forEach(r=>{const b=document.createElement('button');b.className='chip';b.textContent=r;b.setAttribute('aria-pressed',c.role===r);
+    b.addEventListener('click',()=>{c.role=r;changed();renderCast()});rb.appendChild(b)});
+  const px=$('#pix');px.innerHTML='';
+  for(let i=0;i<256;i++){const d=document.createElement('div');d.dataset.i=i;if(c.pixels[i])d.style.background=c.pixels[i];px.appendChild(d)}
+  renderCharColors();
+}
+function renderCharColors(){
+  const box=$('#pColors');box.innerHTML='';
+  const cols=cur().colors.concat(BASIC.filter(b=>!cur().colors.includes(b)));
+  if(!pcolor||!cols.includes(pcolor))pcolor=cols[0];
+  cols.forEach(c=>{const b=document.createElement('button');b.className='sw';b.style.background=c;b.setAttribute('aria-label','Väri '+c);b.setAttribute('aria-pressed',pcolor===c);
+    b.addEventListener('click',()=>{pcolor=c;if(ptool==='erase')setPTool('pen');renderCharColors()});box.appendChild(b)});
+}
+function setPTool(t){ptool=t;document.querySelectorAll('#pTools button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.pt===t))}
+document.querySelectorAll('#pTools button').forEach(b=>b.addEventListener('click',()=>setPTool(b.dataset.pt)));
+function setCell(i,col){const c=curChar();if(c.pixels[i]===col)return false;c.pixels[i]=col;$('#pix').children[i].style.background=col||'';return true}
+function flood(i,col){
+  const c=curChar(),target=c.pixels[i];if(target===col)return;
+  const st=[i],seen=new Set();
+  while(st.length){const k=st.pop();if(seen.has(k)||c.pixels[k]!==target)continue;seen.add(k);setCell(k,col);const x=k%16,y=k>>4;
+    if(x>0)st.push(k-1);if(x<15)st.push(k+1);if(y>0)st.push(k-16);if(y<15)st.push(k+16)}
+}
+let pdown=false,pdirty=false;
+function cellFrom(e){const el=document.elementFromPoint(e.clientX,e.clientY);return el&&el.parentElement===$('#pix')?+el.dataset.i:-1}
+function applyAt(i){
+  if(i<0)return;
+  if(ptool==='fill'){flood(i,pcolor);pdirty=true;return}
+  if(setCell(i,ptool==='erase'?'':pcolor))pdirty=true;
+}
+$('#pix').addEventListener('pointerdown',e=>{e.preventDefault();pdown=true;applyAt(cellFrom(e))});
+$('#pix').addEventListener('pointermove',e=>{if(pdown&&ptool!=='fill')applyAt(cellFrom(e))});
+window.addEventListener('pointerup',()=>{if(pdown){pdown=false;if(pdirty){pdirty=false;changed();updateThumb()}}});
+function updateThumb(){const i=cur().characters.findIndex(c=>c.id===charId);const el=$('#castList').children[i];if(el)el.querySelector('img').src=charImg(curChar())}
+$('#cName').addEventListener('input',e=>{curChar().name=e.target.value;changed();const i=cur().characters.findIndex(c=>c.id===charId);const el=$('#castList').children[i];if(el)el.querySelector('b').textContent=e.target.value||'Nimetön'});
+$('#cCan').addEventListener('input',e=>{curChar().can=e.target.value;changed()});
+twoStep($('#cDel'),'Varmasti? Paina uudestaan',()=>{const g=cur();g.characters=g.characters.filter(c=>c.id!==charId);charId=null;changed();renderCast()});
+twoStep($('#cWipe'),'Varmasti?',()=>{curChar().pixels=new Array(256).fill('');changed();renderEditor();updateThumb()});
+
+/* ---------- 5 juliste ---------- */
+function txt(v,empty){return v&&v.trim()?v:null}
+function renderPoster(){
+  const g=cur(),p=$('#poster');p.innerHTML='';
+  const top=document.createElement('div');top.className='poster-top';top.style.background=g.colors[3]||'#fff';
+  const lab=document.createElement('span');lab.className='label';lab.textContent='Pelisuunnitelma';
+  const h=document.createElement('h2');h.textContent=g.name||'Nimetön peli';h.style.color=g.colors[4]||'#271f3d';
+  const meta=document.createElement('div');meta.className='row';
+  const sw=document.createElement('div');sw.className='poster-swatches';g.colors.forEach(c=>{const i=document.createElement('i');i.style.background=c;sw.appendChild(i)});
+  meta.appendChild(sw);
+  const tags=document.createElement('div');tags.className='chips';
+  g.types.concat(g.mood).forEach(t=>{const s=document.createElement('span');s.className='chip';s.textContent=t;s.style.cursor='default';tags.appendChild(s)});
+  meta.appendChild(tags);
+  top.append(lab,h,meta);p.appendChild(top);
+
+  const body=document.createElement('div');body.className='poster-body';
+  if(txt(g.idea)){const q=document.createElement('p');q.style.margin='0';q.style.fontSize='19px';q.style.whiteSpace='pre-line';q.textContent=g.idea;body.appendChild(q)}
+  const img=document.createElement('img');img.className='poster-world';img.alt='Pelin maailma';img.style.background=g.bg;img.src=worldCv.toDataURL();body.appendChild(img);
+  if(g.characters.length){
+    const hc=document.createElement('h3');hc.textContent='Hahmot';body.appendChild(hc);
+    const cast=document.createElement('div');cast.className='poster-cast';
+    g.characters.forEach(c=>{const f=document.createElement('figure');const i=document.createElement('img');i.alt='';i.src=charImg(c);
+      const cap=document.createElement('figcaption');const b=document.createElement('b');b.textContent=(c.name||'Nimetön')+' ';const r=document.createElement('span');r.className='label';r.textContent=c.role;
+      cap.append(b,r);if(c.can){const d=document.createElement('div');d.textContent=c.can;cap.appendChild(d)}
+      f.append(i,cap);cast.appendChild(f)});
+    body.appendChild(cast);
+  }
+  const dl=document.createElement('dl');
+  const rows=[['Missä',g.place],['Laitteet',g.devices.join(', ')],['Liikkuminen',g.rules.move],['Voittaminen',g.rules.win],['Vaarat',g.rules.danger],['Kerättävät',g.rules.collect],['Jos epäonnistuu',g.rules.lose],['Äänet',g.rules.sound],['Kentät',g.rules.levels]];
+  rows.forEach(([k,v])=>{const dt=document.createElement('dt');dt.textContent=k;const dd=document.createElement('dd');dd.style.whiteSpace='pre-line';
+    if(txt(v))dd.textContent=v;else{dd.textContent='Ei vielä keksitty';dd.className='missing'}dl.append(dt,dd)});
+  body.appendChild(dl);p.appendChild(body);
+}
+
+/* ---------- puhu ideasi ---------- */
+const MIC_SVG='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5" fill="currentColor"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3.5M8.5 21.5h7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let rec=null,recBtn=null,recField=null,micBlocked=!SR;
+const help=document.createElement('div');help.className='talkhelp';help.hidden=true;
+help.innerHTML='<p><b>Puhu näppäimistön mikrofoniin.</b> Tämä selain ei anna sivun avata mikrofonia itse, mutta näppäimistön oma puhetoiminto toimii. Kirjoituskenttä on nyt valittuna:</p>'+
+  '<ul><li><b>iPad ja iPhone:</b> paina näppäimistön mikrofonia ja puhu. Jos sitä ei näy: Asetukset → Yleiset → Näppäimistö → Sanelu päälle.</li>'+
+  '<li><b>Android-tabletti:</b> paina näppäimistön yläreunan mikrofonia (Gboard).</li>'+
+  '<li><b>Windows-kone:</b> paina Windows-näppäin + H.</li>'+
+  '<li><b>Mac:</b> paina kahdesti fn-näppäintä tai mikrofoninäppäintä.</li></ul>'+
+  '<p>Valitse näppäimistön kieleksi suomi, niin puhe muuttuu suomeksi tekstiksi.</p>'+
+  '<div class="row"><button class="btn small" type="button">Selvä</button></div>';
+help.querySelector('button').addEventListener('click',()=>{help.hidden=true});
+function showHelp(btn,field){btn.after(help);help.hidden=false;field.focus();try{field.setSelectionRange(field.value.length,field.value.length)}catch(_){}}
+function stopRec(){if(rec){try{rec.stop()}catch(_){}}}
+function setMic(btn,on){btn.classList.toggle('on',on);btn.querySelector('span').textContent=on?'Kuuntelen… paina kun valmis':'Puhu'}
+function addSpoken(field,text){
+  text=text.trim();if(!text)return;
+  text=text.charAt(0).toUpperCase()+text.slice(1);
+  const v=field.value;const sep=!v?'':(/[.!?]\s*$/.test(v)?' ':(/\s$/.test(v)?'':'. '));
+  field.value=v+sep+text;field.dispatchEvent(new Event('input',{bubbles:true}));
+}
+function startRec(btn,field){
+  if(micBlocked){showHelp(btn,field);return}
+  if(rec){const same=recBtn===btn;stopRec();if(same)return}
+  let r;try{r=new SR()}catch(e){micBlocked=true;showHelp(btn,field);return}
+  rec=r;recBtn=btn;recField=field;
+  r.lang='fi-FI';r.continuous=true;r.interimResults=false;
+  r.onresult=e=>{for(let i=e.resultIndex;i<e.results.length;i++){if(e.results[i].isFinal)addSpoken(field,e.results[i][0].transcript)}};
+  r.onerror=e=>{if(['not-allowed','service-not-allowed','audio-capture','network'].includes(e.error)){micBlocked=true;showHelp(btn,field)}};
+  r.onend=()=>{setMic(btn,false);if(rec===r){rec=null;recBtn=null;recField=null}};
+  try{r.start();setMic(btn,true);help.hidden=true}catch(e){micBlocked=true;rec=null;showHelp(btn,field)}
+}
+document.querySelectorAll('label.field').forEach(lab=>{
+  const field=lab.querySelector('textarea,input[type=text]');if(!field)return;
+  const b=document.createElement('button');b.type='button';b.className='mic';b.innerHTML=MIC_SVG+'<span>Puhu</span>';
+  b.setAttribute('aria-label','Puhu tähän kenttään: '+lab.querySelector('.label').textContent);
+  b.addEventListener('click',()=>startRec(b,field));
+  const w=document.createElement('div');w.className='fieldwrap';lab.replaceWith(w);w.append(lab,b);
+});
+document.querySelectorAll('.step,[data-go]').forEach(b=>b.addEventListener('click',stopRec));
+
+/* ---------- vienti ---------- */
+$('#exportBtn').addEventListener('click',()=>{
+  const g=clone(cur());
+  g.characters.forEach(c=>{c.pixels=c.pixels.map(p=>p||'.').join(',')});
+  const text='EDDAN PELISUUNNITELMA – rakenna peli tästä:\n'+JSON.stringify(g);
+  const out=$('#exportOut'),btn=$('#exportBtn');out.value=text;
+  const ok=()=>{btn.textContent='Kopioitu! Liitä se Claudelle';setTimeout(()=>btn.textContent='Kopioi suunnitelma Claudelle',2500)};
+  const fallback=()=>{out.hidden=false;out.focus();out.select();btn.textContent='Valitse teksti ja kopioi'};
+  try{navigator.clipboard.writeText(text).then(ok,fallback)}catch(e){fallback()}
+});
+
+/* ---------- lataus ---------- */
+function loadAll(){
+  const g=cur();
+  $('#gName').value=g.name;$('#gIdea').value=g.idea;$('#gPlace').value=g.place;
+  $('#rMove').value=g.rules.move;$('#rWin').value=g.rules.win;$('#rDanger').value=g.rules.danger;$('#rCollect').value=g.rules.collect;$('#rLose').value=g.rules.lose;$('#rSound').value=g.rules.sound;$('#rLevels').value=g.rules.levels;
+  chips('#cTypes',TYPES,'types');chips('#cDevices',DEVICES,'devices');chips('#cMood',MOODS,'mood');
+  brush.color=null;renderPalette();renderWorldTools();loadWorld();
+  charId=null;renderCast();refreshPicker();
+  if(!$('#p-poster').hidden)renderPoster();
+}
+showDice(5);loadAll();
+})();
+</script>
+
+</body>
+</html>
