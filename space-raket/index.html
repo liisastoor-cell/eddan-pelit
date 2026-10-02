@@ -40,6 +40,12 @@ p{margin:0;font-size:18px;max-width:34em}
 .combo{color:var(--gold)}
 #ears{position:fixed;left:16px;bottom:max(16px,env(safe-area-inset-bottom));width:120px;height:120px;border-radius:50%;border:5px solid var(--ink);background:var(--gold);font-family:var(--display);font-size:15px;color:var(--ink);box-shadow:0 6px 0 var(--ink);touch-action:none;line-height:1.1}
 #ears.on{background:var(--green);transform:translateY(4px);box-shadow:0 2px 0 var(--ink)}
+#pedals{position:fixed;right:16px;bottom:max(16px,env(safe-area-inset-bottom));display:flex;gap:12px}
+.pedal{width:100px;height:100px;border-radius:50%;border:5px solid var(--ink);font-family:var(--display);font-size:15px;color:var(--ink);box-shadow:0 6px 0 var(--ink);touch-action:none;line-height:1.15;padding:0;cursor:pointer}
+.pedal b{display:block;font-size:24px;font-weight:400}
+#bBrake{background:var(--coral)}#bGas{background:var(--green)}
+@media (max-height:450px){.pedal{width:78px;height:78px;font-size:12px}.pedal b{font-size:19px}}
+.pedal.on{transform:translateY(4px);box-shadow:0 2px 0 var(--ink);filter:brightness(1.2)}
 #ears.alarm{animation:alarm .3s infinite alternate}
 @keyframes alarm{to{background:var(--coral)}}
 .badge{width:110px;height:110px;border-radius:50%;background:var(--gold);border:6px solid var(--ink);display:grid;place-items:center;font-family:var(--display);font-size:46px;color:var(--ink);box-shadow:0 0 0 6px var(--pink),0 8px 0 6px var(--ink)}
@@ -57,11 +63,12 @@ p{margin:0;font-size:18px;max-width:34em}
   <button id="bPause" aria-label="Tauko">II</button>
 </div>
 <button id="ears" hidden>Korvat kiinni!</button>
+<div id="pedals" hidden><button class="pedal" id="bBrake" aria-label="Jarru"><b>◀◀</b>Jarru</button><button class="pedal" id="bGas" aria-label="Kaasu"><b>▶▶</b>Kaasu</button></div>
 
 <section class="screen" id="sMenu">
   <h1>Space <span>Raket</span></h1>
   <p class="credit">Edda suunnitteli tämän pelin</p>
-  <p class="howto"><b>Paina ja pidä pohjassa</b>, niin raketti nousee. Päästä irti, niin se laskee. Väistele planeettoja ja kerää pisteitä ja tähtiä! Jos et ohjaa, Pikku Pörrö putoaa.</p>
+  <p class="howto"><b>Paina ja pidä pohjassa</b>, niin raketti nousee. Päästä irti, niin se laskee. Väistele planeettoja ja kerää pisteitä ja tähtiä! Jos et ohjaa, Pikku Pörrö putoaa. <b>Jarru</b>-nappi hidastaa ja <b>Kaasu</b>-nappi nopeuttaa (tietokoneella nuolet vasemmalle ja oikealle).</p>
   <div class="levels" id="levels"></div>
   <p class="howto" id="total"></p>
   <p class="rotate" id="rot" hidden>Vinkki: käännä puhelin vaakatasoon, niin näet enemmän.</p>
@@ -118,7 +125,7 @@ const LV=[
  {speed:235,time:42,planetGap:290,pr:38,belts:2,suns:1,text:'Nopeampi vauhti, paljon planeettoja ja asteroideja.'},
  {speed:215,time:44,planetGap:330,pr:34,moving:1,moons:1,suns:1,text:'Planeetat ja isot kuut lentävät ylös ja alas!'},
  {speed:210,time:44,planetGap:520,pr:30,donuts:1,text:'Lennä donitsien läpi! Niiden ohi ei pääse.'},
- {speed:205,time:44,planetGap:600,pr:28,cages:1,text:'Häkit sulkeutuvat joka sekunti. Odota että häkki aukeaa!'},
+ {speed:205,time:44,planetGap:600,pr:28,cages:1,text:'Häkit sulkeutuvat joka sekunti. Jarruta ja odota että häkki aukeaa!'},
  {speed:305,time:40,planetGap:300,pr:36,belts:2,suns:1,text:'Vielä nopeammin!'},
  {speed:225,time:46,planetGap:380,pr:34,noise:1,text:'Tulee tosi kovaa ääntä! Kun näet varoituksen, pidä Korvat kiinni -nappia pohjassa (tietokoneella K-näppäin).'},
  {speed:220,time:50,planetGap:460,pr:32,dragons:1,suns:1,text:'Lohikäärmeet puhaltavat tulta! Kun ne savuttavat, väistä.'}
@@ -178,7 +185,8 @@ const sky=[];for(let i=0;i<220;i++)sky.push({x:Math.random()*2400,y:Math.random(
 /* ========== pelin tila ========== */
 let mode='menu',lvl=1,objs=[],L=0,cam=0,R=null,score=0,levelScore=0,maxPts=0,tAll=0,tLevel=0,combo=0,comboT=0,
     thrust=false,ears=false,parts=[],floats=[],noiseState=null,shake=0,startDelay=0,lastT=0;
-const thrustPtr=new Set();
+const thrustPtr=new Set(),brakePtr=new Set(),gasPtr=new Set();let spdMul=1,brake=false,gas=false,keyBrake=false,keyGas=false;
+function setPedals(){brake=brakePtr.size>0||keyBrake;gas=gasPtr.size>0||keyGas;$('bBrake').classList.toggle('on',brake);$('bGas').classList.toggle('on',gas)}
 
 function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 
@@ -233,12 +241,12 @@ function startLevel(n){
   lvl=n;build(n);cam=0;levelScore=0;combo=0;comboT=0;parts=[];floats=[];noiseState=null;shake=0;
   R={x:0,y:VH/2,vy:0,dead:false,trail:0};tLevel=0;startDelay=1.4;thrust=false;ears=false;thrustPtr.clear();
   $('hLv').textContent='Level '+n;$('ears').hidden=!LV[n-1].noise;$('ears').classList.remove('on','alarm');
-  show(null);$('hud').hidden=false;mode='play';audio();SFX.go();
+  show(null);$('hud').hidden=false;$('pedals').hidden=false;spdMul=1;brakePtr.clear();gasPtr.clear();setPedals();mode='play';audio();SFX.go();
 }
 function show(id){['sMenu','sIntro','sDead','sDone','sWin','sPause'].forEach(s=>$(s).hidden=s!==id)}
-function intro(n){lvl=n;$('iTitle').textContent='Level '+n;$('iText').textContent=LV[n-1].text;show('sIntro');mode='intro';$('hud').hidden=true;$('ears').hidden=true}
+function intro(n){lvl=n;$('iTitle').textContent='Level '+n;$('iText').textContent=LV[n-1].text;show('sIntro');mode='intro';$('hud').hidden=true;$('pedals').hidden=true;$('ears').hidden=true}
 function menu(){
-  mode='menu';$('hud').hidden=true;$('ears').hidden=true;show('sMenu');if(engineGain)engineGain.gain.value=0;if(noiseGain)noiseGain.gain.value=0;
+  mode='menu';$('hud').hidden=true;$('pedals').hidden=true;$('ears').hidden=true;show('sMenu');if(engineGain)engineGain.gain.value=0;if(noiseGain)noiseGain.gain.value=0;
   const box=$('levels');box.innerHTML='';let tot=0,badges=0;
   for(let n=1;n<=10;n++){const b=document.createElement('button');b.className='lv';b.textContent=n;const best=save.best[n];
     if(best!==undefined){b.classList.add('done');badges++;tot+=best;const s=document.createElement('small');s.textContent=best+' p';b.appendChild(s)}
@@ -251,7 +259,7 @@ function die(why){
   burst(R.x,R.y,C.coral,30);burst(R.x,R.y,C.gold,20);
   const T={planet:['BOING!','Pörrö törmäsi planeettaan.'],rock:['BOING!','Pörrö osui asteroidiin.'],moon:['BOING!','Pörrö törmäsi kuuhun.'],
     sun:['KUUMAA!','Pörrö lensi liian lähelle aurinkoa.'],fall:['VOI EI!','Pörrö putosi. Muista ohjata!'],donut:['BOING!','Pörrö osui donitsiin. Lennä keskeltä läpi!'],
-    cage:['KLONK!','Häkki sulkeutui. Odota että se aukeaa!'],noise:['AUTS!','Liian kova ääni! Pidä korvat kiinni, kun varoitus tulee.'],
+    cage:['KLONK!','Häkki sulkeutui. Jarruta ja odota että se aukeaa!'],noise:['AUTS!','Liian kova ääni! Pidä korvat kiinni, kun varoitus tulee.'],
     dragon:['POLTTAA!','Lohikäärmeen tuli osui. Väistä kun se savuttaa!']}[why]||['BOING!',''];
   $('dTitle').textContent=T[0];$('dText').textContent=T[1]+' Aloitat tämän levelin alusta.';
   setTimeout(()=>{if(mode==='dead')show('sDead')},900);
@@ -262,7 +270,7 @@ function finish(){
   const prev=save.best[lvl];if(prev===undefined||levelScore>prev)save.best[lvl]=levelScore;
   save.unlocked=Math.max(save.unlocked,Math.min(10,lvl+1));store();
   for(let i=0;i<6;i++)burst(R.x+80,50+Math.random()*500,PLANET_COLS[i],20);
-  if(lvl===10){setTimeout(()=>{SFX.win();const tot=Object.values(save.best).reduce((a,b)=>a+b,0);$('winText').textContent='Kaikkien levelien parhaat pisteet yhteensä: '+tot;show('sWin');$('hud').hidden=true;$('ears').hidden=true;mode='win'},900);return}
+  if(lvl===10){setTimeout(()=>{SFX.win();const tot=Object.values(save.best).reduce((a,b)=>a+b,0);$('winText').textContent='Kaikkien levelien parhaat pisteet yhteensä: '+tot;show('sWin');$('hud').hidden=true;$('pedals').hidden=true;$('ears').hidden=true;mode='win'},900);return}
   $('badge').textContent=lvl;$('doneText').textContent='Pisteet: '+levelScore+' (keräsit '+(levelScore-10)+' / '+maxPts+' pisteestä, +10 levelistä)';
   setTimeout(()=>{show('sDone');$('ears').hidden=true},700);
 }
@@ -289,9 +297,9 @@ function update(dt){
   if(startDelay>0){startDelay-=dt;R.y+=Math.sin(tLevel*5)*.4;return}
   // ohjaus
   const up=thrust;
-  R.vy+=(up?-900:620)*dt;R.vy=Math.max(-420,Math.min(460,R.vy));R.y+=R.vy*dt;R.x+=P.speed*dt;
+  R.vy+=(up?-900:620)*dt;R.vy=Math.max(-420,Math.min(460,R.vy));R.y+=R.vy*dt;const spdT=brake&&!gas?.15:gas&&!brake?1.6:1;spdMul+=(spdT-spdMul)*Math.min(1,dt*5);R.x+=P.speed*spdMul*dt;
   if(engineGain)engineGain.gain.setTargetAtTime(up?.16:.04,AC.currentTime,.05);
-  if(up&&Math.random()<.9)parts.push({x:R.x-30,y:R.y+4,vx:-P.speed*.4-80*Math.random(),vy:(Math.random()-.5)*60+100,life:.35,col:Math.random()<.5?C.gold:C.coral,r:3+Math.random()*3});
+  if(up&&Math.random()<.9)parts.push({x:R.x-30,y:R.y+4,vx:-P.speed*spdMul*.4-80*Math.random(),vy:(Math.random()-.5)*60+100,life:.35,col:Math.random()<.5?C.gold:C.coral,r:3+Math.random()*3});
   if(R.y<24){R.y=24;R.vy=Math.max(0,R.vy)}
   if(R.y>VH+10)return die('fall');
   cam=R.x-Math.min(190,VW*.27);
@@ -441,21 +449,26 @@ function loop(t){const dt=Math.min(.05,(t-lastT)/1000||0);lastT=t;if(mode!=='pau
 function setThrust(){thrust=thrustPtr.size>0||keyUp}
 let keyUp=false;
 cv.addEventListener('pointerdown',e=>{audio();if(mode!=='play')return;thrustPtr.add(e.pointerId);setThrust();e.preventDefault()});
-addEventListener('pointerup',e=>{thrustPtr.delete(e.pointerId);earPtr.delete(e.pointerId);setThrust();setEars()});
-addEventListener('pointercancel',e=>{thrustPtr.delete(e.pointerId);earPtr.delete(e.pointerId);setThrust();setEars()});
+addEventListener('pointerup',e=>{thrustPtr.delete(e.pointerId);earPtr.delete(e.pointerId);brakePtr.delete(e.pointerId);gasPtr.delete(e.pointerId);setThrust();setEars();setPedals()});
+addEventListener('pointercancel',e=>{thrustPtr.delete(e.pointerId);earPtr.delete(e.pointerId);brakePtr.delete(e.pointerId);gasPtr.delete(e.pointerId);setThrust();setEars();setPedals()});
 const earPtr=new Set();let keyEars=false;
 function setEars(){ears=earPtr.size>0||keyEars;$('ears').classList.toggle('on',ears)}
 $('ears').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();audio();earPtr.add(e.pointerId);setEars()});
 $('ears').addEventListener('contextmenu',e=>e.preventDefault());
+[['bBrake',brakePtr],['bGas',gasPtr]].forEach(([id,set])=>{const b=$(id);
+  b.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();audio();set.add(e.pointerId);setPedals()});
+  b.addEventListener('contextmenu',e=>e.preventDefault())});
 cv.addEventListener('contextmenu',e=>e.preventDefault());
 addEventListener('keydown',e=>{
   if([' ','ArrowUp','w','W'].includes(e.key)){e.preventDefault();audio();
     if(mode==='intro'){startLevel(lvl);return}if(mode==='dead'&&!$('sDead').hidden){intro(lvl);return}
     keyUp=true;setThrust()}
   if(['k','K','ArrowDown','s','S'].includes(e.key)){keyEars=true;setEars()}
+  if(['ArrowLeft','a','A'].includes(e.key)){e.preventDefault();keyBrake=true;setPedals()}
+  if(['ArrowRight','d','D'].includes(e.key)){e.preventDefault();keyGas=true;setPedals()}
   if(e.key==='Escape'||e.key==='p'||e.key==='P')togglePause();
 });
-addEventListener('keyup',e=>{if([' ','ArrowUp','w','W'].includes(e.key)){keyUp=false;setThrust()}if(['k','K','ArrowDown','s','S'].includes(e.key)){keyEars=false;setEars()}});
+addEventListener('keyup',e=>{if([' ','ArrowUp','w','W'].includes(e.key)){keyUp=false;setThrust()}if(['k','K','ArrowDown','s','S'].includes(e.key)){keyEars=false;setEars()}if(['ArrowLeft','a','A'].includes(e.key)){keyBrake=false;setPedals()}if(['ArrowRight','d','D'].includes(e.key)){keyGas=false;setPedals()}});
 function togglePause(){if(mode==='play'){mode='pause';show('sPause');if(engineGain)engineGain.gain.value=0;if(noiseGain)noiseGain.gain.value=0}else if(mode==='pause'){mode='play';show(null);lastT=performance.now()}}
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&mode==='play')togglePause()});
 $('bPause').onclick=togglePause;$('bResume').onclick=togglePause;
