@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="fi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mikrofonitesti</title>
+<style>
+:root{--bg:#fff4e2;--ink:#2a2140;--pink:#ff5d8f;--green:#2bb673;--muted:#6a6184}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;padding:20px 16px 40px}
+.wrap{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1{margin:0;font-size:28px}
+.card{background:#fff;border:3px solid var(--ink);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px}
+h2{margin:0;font-size:19px}
+button{font:inherit;font-weight:700;background:#fff;color:var(--ink);border:3px solid var(--ink);border-radius:999px;padding:.45em 1.1em;box-shadow:0 3px 0 var(--ink);cursor:pointer;align-self:flex-start}
+button:disabled{opacity:.45;cursor:default}
+select{font:inherit;padding:.4em;border:2px solid var(--ink);border-radius:10px;max-width:100%}
+.meter{height:28px;border:3px solid var(--ink);border-radius:999px;overflow:hidden;background:#eee}
+.meter div{height:100%;width:0;background:var(--green);transition:width .06s}
+.st{font-weight:700}.ok{color:var(--green)}.bad{color:#c62852}.muted{color:var(--muted);font-size:15px}
+#said{min-height:2.5em;border:2px dashed var(--muted);border-radius:10px;padding:8px}
+</style></head><body><div class="wrap">
+<h1>Mikrofonitesti</h1>
+<p class="muted">Tee vaiheet järjestyksessä. Jokainen vaihe kertoo, toimiiko se.</p>
+
+<div class="card"><h2>1. Lupa ja mikrofonit</h2>
+<button id="b1">Pyydä mikrofonilupa</button>
+<div id="s1" class="st"></div>
+<label>Käytettävä mikrofoni:<br><select id="dev" disabled></select></label>
+<div class="muted" id="env"></div></div>
+
+<div class="card"><h2>2. Kuuluuko ääni?</h2>
+<p class="muted">Puhu tai taputa. Palkin pitää liikkua.</p>
+<div class="meter"><div id="lvl"></div></div>
+<div id="s2" class="st"></div></div>
+
+<div class="card"><h2>3. Nauhoita ja kuuntele</h2>
+<button id="b3" disabled>Nauhoita 3 sekuntia</button>
+<audio id="play" controls hidden></audio>
+<div id="s3" class="st"></div></div>
+
+<div class="card"><h2>4. Puheesta tekstiksi</h2>
+<button id="b4" disabled>Sano jotain suomeksi</button>
+<div id="said"></div>
+<div id="s4" class="st"></div></div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const set=(id,t,ok)=>{const e=$(id);e.textContent=t;e.className='st '+(ok===true?'ok':ok===false?'bad':'')};
+let stream=null,ctx=null,raf=0,peak=0;
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+const inFrame=(()=>{try{return self!==top}catch(_){return true}})();
+$('env').textContent='Selain: '+navigator.userAgent.replace(/^.*?\) /,'').slice(0,90)+
+  (inFrame?' · HUOM: sivu on toisen ikkunan sisällä':'')+(isSecureContext?'':' · EI suojattu yhteys');
+async function listDevs(cur){
+  const ds=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='audioinput');
+  const sel=$('dev');sel.innerHTML='';
+  ds.forEach((d,i)=>{const o=document.createElement('option');o.value=d.deviceId;o.textContent=d.label||('Mikrofoni '+(i+1));if(d.deviceId===cur)o.selected=true;sel.append(o)});
+  sel.disabled=!ds.length;return ds;
+}
+async function open(id){
+  if(stream)stream.getTracks().forEach(t=>t.stop());
+  stream=await navigator.mediaDevices.getUserMedia({audio:id?{deviceId:{exact:id}}:true});
+  const tr=stream.getAudioTracks()[0];
+  set('s1','Lupa OK. Käytössä: '+tr.label,true);
+  await listDevs(tr.getSettings().deviceId);
+  meter();$('b3').disabled=false;$('b4').disabled=!SR;
+  if(!SR)set('s4','Tämä selain ei tue puheentunnistusta. Käytä Chromea, Edgeä tai Safaria.',false);
+}
+$('b1').onclick=async()=>{
+  if(!navigator.mediaDevices){set('s1','Selain ei salli mikrofonia tällä sivulla.',false);return}
+  try{await open()}catch(e){
+    const m={NotAllowedError:'Lupa estetty. Paina osoiterivin vasemmasta reunasta lukon/säätimien kuvaa → Mikrofoni → Salli, ja päivitä sivu. Tarkista myös koneen asetuksista, että selain saa käyttää mikrofonia.',
+      NotFoundError:'Mikrofonia ei löydy. Onko headset kytketty kunnolla? Kokeile irrottaa ja kytkeä uudelleen.',
+      NotReadableError:'Mikrofoni on varattu. Sulje Teams, Zoom tai muu ohjelma, joka voi käyttää sitä.'};
+    set('s1',(m[e.name]||'Virhe: ')+(m[e.name]?'':e.name+' '+e.message),false);
+  }
+};
+$('dev').onchange=e=>open(e.target.value).catch(err=>set('s1','Tämä mikrofoni ei auennut: '+err.name,false));
+function meter(){
+  cancelAnimationFrame(raf);if(ctx)ctx.close();
+  ctx=new (window.AudioContext||window.webkitAudioContext)();
+  const an=ctx.createAnalyser();an.fftSize=1024;ctx.createMediaStreamSource(stream).connect(an);
+  const buf=new Float32Array(an.fftSize);peak=0;set('s2','Odotan ääntä…');
+  const t0=performance.now();
+  (function loop(){an.getFloatTimeDomainData(buf);let s=0;for(const v of buf)s+=v*v;
+    const rms=Math.sqrt(s/buf.length),pct=Math.min(100,rms*400);$('lvl').style.width=pct+'%';
+    if(pct>peak)peak=pct;
+    if(peak>8)set('s2','Ääntä tulee! Mikrofoni toimii.',true);
+    else if(performance.now()-t0>6000)set('s2','Ei ääntä. Tarkista headsetin mykistys­nappi/kytkin ja kokeile valita toinen mikrofoni yltä.',false);
+    raf=requestAnimationFrame(loop)})();
+}
+$('b3').onclick=()=>{
+  const ch=[];let r;try{r=new MediaRecorder(stream)}catch(e){set('s3','Nauhoitus ei onnistu tässä selaimessa.',false);return}
+  r.ondataavailable=e=>ch.push(e.data);
+  r.onstop=()=>{const a=$('play');a.src=URL.createObjectURL(new Blob(ch,{type:r.mimeType}));a.hidden=false;a.play();set('s3','Kuuluuko oma äänesi? Jos kuuluu, mikrofoni toimii.',true);$('b3').disabled=false};
+  r.start();$('b3').disabled=true;set('s3','Nauhoitan… puhu nyt!');setTimeout(()=>r.stop(),3000);
+};
+$('b4').onclick=()=>{
+  const r=new SR();r.lang='fi-FI';r.interimResults=true;
+  r.onresult=e=>{$('said').textContent=[...e.results].map(x=>x[0].transcript).join(' ')};
+  r.onerror=e=>set('s4',({'not-allowed':'Puheentunnistuksen lupa estetty.','service-not-allowed':'Selain ei salli puheentunnistusta (esim. Brave tai yksityinen ikkuna).','network':'Puheentunnistus ei saa yhteyttä palvelimeen.','no-speech':'Ei kuulunut puhetta. Kokeile uudestaan.','audio-capture':'Puheentunnistus ei löydä mikrofonia. Puheentunnistus käyttää koneen oletus­mikrofonia: aseta headset oletukseksi koneen ääniasetuksista.'}[e.error]||'Virhe: '+e.error),false);
+  r.onend=()=>{$('b4').disabled=false;if($('said').textContent)set('s4','Toimii! Puhenappi pelistudiossa toimii samassa selaimessa.',true)};
+  $('said').textContent='';set('s4','Kuuntelen…');$('b4').disabled=true;r.start();
+};
+</script></body></html>
