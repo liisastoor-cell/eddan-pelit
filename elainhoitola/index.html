@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="fi"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#2d6f98">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Eläinhoitola</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* Eddan suunnittelema peli. Värit Eddan omasta väripaletista. */
+:root{--mint:#44e4b4;--sky:#63c4ee;--berry:#d43565;--ice:#d0f0f1;--olive:#4c4624;--ink:#1b2430;--gold:#ffd23f;--deep:#2d6f98;
+  --display:"Bungee","Arial Black",Impact,sans-serif;--body:"Atkinson Hyperlegible",system-ui,sans-serif}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--deep);color:#fff;font-family:var(--body);overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+canvas#cv{position:fixed;inset:0;width:100%;height:100%;display:block}
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px 16px;text-align:center;background:rgba(27,36,48,.74);overflow:auto}
+.screen[hidden],[hidden]{display:none!important}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(36px,8.5vw,74px);line-height:.95;margin:0;color:var(--mint);-webkit-text-stroke:2px var(--ink);paint-order:stroke fill;text-shadow:0 5px 0 var(--ink)}
+h1 span{color:var(--berry)}
+h2{font-family:var(--display);font-weight:400;font-size:clamp(26px,6vw,44px);margin:0;color:var(--gold);text-shadow:0 4px 0 var(--ink)}
+h3{font-family:var(--display);font-weight:400;font-size:18px;margin:4px 0 0;color:var(--ice)}
+p{margin:0;font-size:18px;max-width:34em}
+.credit{font-size:15px;opacity:.85}
+.btn{font-family:var(--display);font-size:20px;color:var(--ink);background:var(--mint);border:4px solid var(--ink);border-radius:999px;padding:.45em 1.3em;box-shadow:0 5px 0 var(--ink);cursor:pointer;touch-action:manipulation}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--ink)}
+.btn.small{font-size:15px;padding:.35em 1em;background:var(--ice)}
+.heroes{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.hero{width:118px;border:4px solid var(--ink);border-radius:18px;background:var(--ice);color:var(--ink);padding:8px 6px 10px;cursor:pointer;box-shadow:0 4px 0 var(--ink);font-family:var(--body);touch-action:manipulation}
+.hero canvas{width:64px;height:64px;image-rendering:pixelated;display:block;margin:0 auto}
+.hero b{display:block;font-family:var(--display);font-weight:400;font-size:17px}
+.hero small{display:block;font-size:12.5px;line-height:1.2;margin-top:3px}
+.hero.sel{background:var(--gold);transform:translateY(-3px)}
+.levels{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;width:min(480px,100%)}
+.lv{position:relative;font-family:var(--display);font-size:22px;aspect-ratio:1;border:4px solid var(--ink);border-radius:50%;background:var(--ice);color:var(--ink);cursor:pointer;box-shadow:0 4px 0 var(--ink);padding:0;touch-action:manipulation}
+.lv.done{background:var(--gold)}
+.lv:disabled{background:#4c6177;color:#8ea3b8;cursor:default;box-shadow:none}
+.lv small{position:absolute;left:0;right:0;bottom:-1px;font-family:var(--body);font-size:11px;font-weight:700}
+.howto{font-size:16px;opacity:.92;max-width:31em}
+.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.hud{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;gap:8px;padding:8px 10px;padding-top:max(8px,env(safe-area-inset-top));pointer-events:none;font-family:var(--display);font-size:17px;text-shadow:0 2px 0 var(--ink)}
+.hud .pill{background:rgba(27,36,48,.7);border:2px solid var(--ice);border-radius:999px;padding:.12em .7em;white-space:nowrap}
+.hud .bar{flex:1;height:14px;border:2px solid var(--ice);border-radius:999px;overflow:hidden;background:rgba(27,36,48,.7);min-width:40px}
+.hud .bar i{display:block;height:100%;width:100%;background:var(--gold)}
+.hud button{pointer-events:auto;font:inherit;font-size:15px;color:var(--ink);background:var(--ice);border:3px solid var(--ink);border-radius:999px;width:38px;height:38px;cursor:pointer;padding:0}
+.badge{width:104px;height:104px;border-radius:50%;background:var(--gold);border:6px solid var(--ink);display:grid;place-items:center;font-family:var(--display);font-size:44px;color:var(--ink);box-shadow:0 0 0 6px var(--berry),0 8px 0 6px var(--ink)}
+</style></head>
+<body>
+<canvas id="cv"></canvas>
+
+<div class="hud" id="hud" hidden>
+  <span class="pill" id="hLv">Level 1</span>
+  <span class="pill" id="hStars">★ 0</span>
+  <div class="bar" title="Aikaa jäljellä"><i id="hBar"></i></div>
+  <button id="bMute" aria-label="Äänet päälle tai pois">♪</button>
+  <button id="bPause" aria-label="Tauko">II</button>
+</div>
+
+<section class="screen" id="sMenu">
+  <h1>Eläin<span>hoitola</span></h1>
+  <p class="credit">Edda suunnitteli tämän pelin</p>
+  <p class="howto">Hoida eläimiä niin, että ne ovat iloisia! Ruoki, juota, leiki ja <b>silitä</b>. Liiku <b>sormella pyyhkäisemällä</b> tai <b>hiirellä</b>. Kerää tähtiä!</p>
+  <h3>Valitse sankari</h3>
+  <div class="heroes" id="heroes"></div>
+  <h3>Valitse level</h3>
+  <div class="levels" id="levels"></div>
+  <p class="howto" id="total"></p>
+</section>
+
+<section class="screen" id="sIntro" hidden>
+  <h2 id="iTitle">Level 1</h2>
+  <p id="iText"></p>
+  <button class="btn" id="bGo">Aloita!</button>
+</section>
+
+<section class="screen" id="sLose" hidden>
+  <h2>Voi ei!</h2>
+  <p id="lText"></p>
+  <div class="row"><button class="btn" id="bRetry">Yritä uudestaan</button><button class="btn small" data-menu>Levelit</button></div>
+</section>
+
+<section class="screen" id="sDone" hidden>
+  <h2>Level läpi!</h2>
+  <div class="badge" id="badge">1</div>
+  <p>Kaikki eläimet ovat iloisia!</p>
+  <p id="doneText"></p>
+  <div class="row"><button class="btn" id="bNext">Seuraava level</button><button class="btn small" data-menu>Levelit</button></div>
+</section>
+
+<section class="screen" id="sWin" hidden>
+  <h1>Voitit<br><span>pelin!</span></h1>
+  <p>Hoidit kaikki 10 leveliä, ja jokainen eläin on iloinen. Olet maailman paras eläinhoitaja!</p>
+  <p id="winText"></p>
+  <button class="btn" data-menu>Levelit</button>
+</section>
+
+<section class="screen" id="sPause" hidden>
+  <h2>Tauko</h2>
+  <div class="row"><button class="btn" id="bResume">Jatka</button><button class="btn small" data-menu>Levelit</button></div>
+</section>
+
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const HERO_PIX={"Lilli": ".,.,.,.,.,.,#000000,#000000,#000000,#000000,#000000,#000000,.,.,.,.,.,.,.,.,.,#000000,#a8714a,#a8714a,#a8714a,#a8714a,#a8714a,#a8714a,#000000,.,.,.,.,.,.,#ffffff,#000000,#000000,#000000,#000000,#000000,#f2c19a,#000000,#000000,#000000,#000000,.,.,.,.,.,.,#000000,#f2c19a,#000000,#000000,#f2c19a,#f2c19a,#000000,#000000,#f2c19a,#000000,.,.,.,.,.,.,#000000,#000000,#f2c19a,#e8475f,#f2c19a,#f2c19a,#e8475f,#f2c19a,#000000,#000000,.,.,.,.,.,.,#000000,#a8714a,#000000,#f2c19a,#000000,#000000,#f2c19a,#000000,#a8714a,#000000,.,.,.,.,.,.,#000000,#a8714a,#a8714a,#000000,#f2c19a,#f2c19a,#000000,#a8714a,#a8714a,#000000,.,.,.,.,.,.,#000000,#a8714a,#a8714a,#a8714a,#000000,#000000,#a8714a,#a8714a,#a8714a,#000000,.,.,.,.,.,.,#000000,#000000,#000000,#000000,#000000,#000000,#000000,#000000,#000000,#000000,.,.,.,.,.,.,#ffffff,#000000,#63c4ee,#63c4ee,#63c4ee,#63c4ee,#63c4ee,#63c4ee,#000000,.,.,.,.,.,.,.,#ffffff,#000000,#000000,#000000,#63c4ee,#63c4ee,#000000,#000000,#000000,#ffffff,.,.,.,.,.,.,.,.,.,#000000,#63c4ee,#63c4ee,#000000,.,.,.,.,.,.,.,.,.,.,.,.,#000000,#000000,#000000,#000000,.,.,.,.,.,.,.,.,.,.,.,.,#000000,#d43565,#d43565,#000000,.,.,.,.,.,.,.,.,.,.,.,.,#000000,#000000,#000000,#000000,.,.,.,.,.,.,.,.,.,.,.,.,#000000,#f2c19a,#f2c19a,#000000,.,.,.,.,.", "Me": ".,.,.,.,.,#000000,#000000,#000000,#000000,#000000,#000000,#000000,#000000,#ffffff,.,.,.,.,.,.,#000000,#f2c19a,#f2c19a,#f2c19a,#f2c19a,#f2c19a,#f2c19a,#f2c19a,#f2c19a,#000000,.,.,.,.,.,#000000,#f2c19a,#f2c19a,#f2c19a,#f2c19a,#f2c19a,#f2c19a,#f2c19a,#f2c19a,#f2c19a,#f2c19a,#000000,.,.,.,#000000,#f2c19a,#f2c19a,#000000,#000000,#000000,#f2c19a,#f2c19a,#000000,#000000,#000000,#f2c19a,#f2c19a,#000000,.,.,#000000,#f2c19a,#f2c19a,#f2c19a,#f2c19a,#f2c19a,#f2c19a,#f2c19a,#f2c19a,#f2c19a,#f2c19a,#f2c19a,#f2c19a,#000000,.,.,#000000,#000000,#f2c19a,#e8475f,#e8475f,#f2c19a,#f2c19a,#f2c19a,#f2c19a,#e8475f,#e8475f,#f2c19a,#000000,#000000,.,.,#000000,#a8714a,#000000,#f2c19a,#f2c19a,#000000,#000000,#000000,#000000,#f2c19a,#f2c19a,#000000,#a8714a,#000000,.,.,#000000,#a8714a,#a8714a,#000000,#f2c19a,#f2c19a,#f2c19a,#f2c19a,#f2c19a,#f2c19a,#000000,#a8714a,#a8714a,#000000,.,.,#000000,#a8714a,#a8714a,#a8714a,#000000,#f2c19a,#f2c19a,#f2c19a,#f2c19a,#000000,#a8714a,#a8714a,#a8714a,#000000,.,#ffffff,#000000,#a8714a,#000000,#000000,#000000,#000000,#000000,#000000,#000000,#000000,#000000,#000000,#a8714a,#000000,.,#ffffff,#000000,#a8714a,#000000,#f2c19a,#000000,#2f6fd0,#2f6fd0,#2f6fd0,#2f6fd0,#000000,#f2c19a,#000000,#a8714a,#000000,.,.,#000000,#000000,#000000,#000000,#000000,#000000,#2f6fd0,#2f6fd0,#000000,#000000,#000000,#000000,#000000,#000000,.,.,.,.,.,.,.,#000000,#2f6fd0,#2f6fd0,#000000,.,.,.,.,.,.,.,.,.,.,#ffffff,#000000,#2f6fd0,#2f6fd0,#2f6fd0,#2f6fd0,#000000,.,.,.,.,.,.,.,.,.,#000000,#2f6fd0,#2f6fd0,#2f6fd0,#2f6fd0,#2f6fd0,#2f6fd0,#000000,.,.,.,.,.,.,.,.,#000000,#000000,#000000,#000000,#000000,#000000,#000000,#000000,#000000,.,.", "kitty": ".,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,#ffffff,.,.,.,.,.,.,.,.,.,.,#000000,.,.,.,#ffffff,#000000,.,.,.,.,.,.,.,.,#000000,#000000,#d43565,#000000,#000000,#000000,#000000,#d43565,#000000,#000000,.,.,.,.,.,.,#000000,#a8714a,#a8714a,#a8714a,#a8714a,#a8714a,#a8714a,#a8714a,#a8714a,#000000,.,.,.,.,.,#000000,#000000,#a8714a,#000000,#000000,#a8714a,#a8714a,#000000,#000000,#a8714a,#000000,#000000,.,.,.,.,.,#000000,#d43565,#d43565,#a8714a,#a8714a,#a8714a,#a8714a,#d43565,#d43565,#000000,.,.,.,.,.,.,#000000,#000000,#000000,#000000,#000000,#000000,#000000,#000000,#000000,#000000,.,.,.,.,.,.,.,.,#000000,.,.,.,.,#000000,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,."};
+const C={mint:'#44e4b4',sky:'#63c4ee',berry:'#d43565',ice:'#d0f0f1',olive:'#4c4624',ink:'#1b2430',gold:'#ffd23f',wall:'#3f93c4',floor:'#8fd6f2',floor2:'#7ccbeb'};
+
+/* ========== sankarit (Eddan piirrokset) ========== */
+const HEROES={
+  Lilli:{name:'Lilli',can:'Hyvä hoitamaan ja kuuntelemaan eläimiä. Silittää nopeasti!',speed:330,pet:1.9,magnet:46},
+  Me:{name:'Me',can:'Hyvä liikkumaan. Juoksee tosi nopeasti!',speed:450,pet:1,magnet:46},
+  kitty:{name:'kitty',can:'Kuulee, näkee ja haistaa kaiken. Tähdet tulevat luo!',speed:340,pet:1,magnet:150,sniff:true}
+};
+for(const k in HEROES){const px=HERO_PIX[k].split(','),c=document.createElement('canvas');c.width=c.height=16;const x=c.getContext('2d');
+  let x0=16,y0=16,x1=0,y1=0;px.forEach((col,i)=>{if(col!=='.'){x.fillStyle=col;x.fillRect(i%16,i>>4,1,1);x0=Math.min(x0,i%16);y0=Math.min(y0,i>>4);x1=Math.max(x1,i%16+1);y1=Math.max(y1,(i>>4)+1)}});
+  HEROES[k].img=c;HEROES[k].box=[x0,y0,x1-x0,y1-y0]}
+
+/* ========== eläimet ja tavarat ========== */
+const ANIMALS={
+  koira:{name:'Koira',food:'luu',col:'#c98a4b',dark:'#8a5a2b'},
+  kissa:{name:'Kissa',food:'kala',col:'#f29f4b',dark:'#c26a1f'},
+  pupu:{name:'Pupu',food:'porkkana',col:'#f6f1ea',dark:'#d9cfc2'},
+  hiiri:{name:'Hiiri',food:'juusto',col:'#b9b4c9',dark:'#8c86a1'},
+  possu:{name:'Possu',food:'omena',col:'#f6a5c0',dark:'#d9789a'},
+  kilppari:{name:'Kilpikonna',food:'salaatti',col:'#9bd36a',dark:'#5f9a37'}
+};
+const ITEM_NAME={luu:'Luu',kala:'Kala',porkkana:'Porkkana',juusto:'Juusto',omena:'Omena',salaatti:'Salaatti',vesi:'Vesi',pallo:'Pallo',peitto:'Peitto'};
+const NEED_ITEM={water:'vesi',play:'pallo',sleep:'peitto'};
+
+/* ========== levelit Eddan suunnitelman mukaan: joka levelissä vähän vaikeampaa ========== */
+const LV=[
+ {n:2,a:['pupu','koira'],needs:['food','pet'],T:45,decay:3.2,gap:[5,9],text:'Tervetuloa eläinhoitolaan! Kun eläimen yläpuolelle tulee kupla, se tarvitsee jotain. Hae oikea ruoka hyllystä ja vie se eläimelle. Kun kuplassa on sydän, silitä eläintä: liikuta sormea tai hiirtä edestakaisin sen päällä.'},
+ {n:3,a:['kissa','pupu','koira'],needs:['food','pet'],T:50,decay:3.6,gap:[6,10],text:'Nyt hoidettavana on kolme eläintä. Jokaisella on oma ruokansa!'},
+ {n:3,a:['hiiri','kissa','pupu'],needs:['food','pet','water'],T:50,decay:4,gap:[6,10],text:'Eläimille tulee jano! Hae vettä hanasta.'},
+ {n:4,a:['koira','hiiri','possu','kissa'],needs:['food','pet','water'],T:55,decay:4.4,gap:[7,11],text:'Neljä eläintä, ja ne tarvitsevat apua useammin.'},
+ {n:4,a:['possu','pupu','koira','kilppari'],needs:['food','pet','water','play'],T:55,decay:4.6,gap:[7,11],text:'Eläimet haluavat leikkiä! Hae pallo lelulaatikosta.'},
+ {n:5,a:['kissa','koira','hiiri','pupu','possu'],needs:['food','pet','water','play'],T:60,decay:5,gap:[8,12],text:'Viisi eläintä! Pidä kiirettä.'},
+ {n:5,a:['kilppari','kissa','possu','hiiri','koira'],needs:['food','pet','water','play','sleep'],T:60,decay:4.9,gap:[9,13],text:'Eläimiä väsyttää! Hae peitto kaapista, niin eläin pääsee nukkumaan.'},
+ {n:6,a:['koira','pupu','kissa','possu','hiiri','kilppari'],needs:['food','pet','water','play','sleep'],T:60,decay:4.8,gap:[11,15],text:'Kuusi eläintä, kaikki eri lajeja.'},
+ {n:7,a:['kissa','koira','pupu','hiiri','possu','kilppari','koira'],needs:['food','pet','water','play','sleep'],T:65,decay:4.6,gap:[14,18],text:'Seitsemän eläintä! Muista: jos eläin itkee, se on surullinen.'},
+ {n:8,a:['pupu','kissa','koira','possu','hiiri','kilppari','kissa','pupu'],needs:['food','pet','water','play','sleep'],T:70,decay:4.4,gap:[18,23],text:'Viimeinen level! Kahdeksan eläintä. Tee kaikki iloisiksi!'}
+];
+const SAD=35;
+
+/* ========== tallennus ========== */
+let save={unlocked:1,best:{},hero:'Lilli'};
+try{const s=JSON.parse(localStorage.getItem('elainhoitola')||'null');if(s&&s.unlocked)save=Object.assign(save,s)}catch(_){}
+function store(){try{localStorage.setItem('elainhoitola',JSON.stringify(save))}catch(_){}}
+if(!HEROES[save.hero])save.hero='Lilli';
+
+/* ========== äänet ========== */
+let AC=null,master=null,muted=false;
+function audio(){
+  if(AC){if(AC.state==='suspended')AC.resume();return}
+  try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(_){return}
+  master=AC.createGain();master.gain.value=muted?0:.8;master.connect(AC.destination);
+}
+function tone(freq,dur,type,vol,when,slideTo){
+  if(!AC)return;const t=AC.currentTime+(when||0);const o=AC.createOscillator(),g=AC.createGain();
+  o.type=type||'square';o.frequency.setValueAtTime(freq,t);if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,t+dur);
+  g.gain.setValueAtTime(vol||.15,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g).connect(master);o.start(t);o.stop(t+dur+.02);
+}
+const SFX={
+  star(){[784,988,1175,1568].forEach((f,i)=>tone(f,.12,'triangle',.15,i*.06))},
+  pick(){tone(600,.08,'square',.1);tone(900,.1,'square',.1,.06)},
+  eat(){[0,.16,.32].forEach(w=>{tone(200,.09,'square',.13,w,120);tone(320,.06,'triangle',.08,w+.04)})},
+  drink(){[0,.12,.24].forEach((w,i)=>tone(500+i*120,.1,'sine',.18,w,900+i*120))},
+  play(){tone(300,.25,'sine',.2,0,700);tone(700,.25,'sine',.15,.22,300)},
+  sleep(){[523,440,392].forEach((f,i)=>tone(f,.4,'triangle',.13,i*.35))},
+  purr(){if(!AC)return;const t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain(),l=AC.createOscillator(),lg=AC.createGain();
+    o.type='sawtooth';o.frequency.value=70;l.frequency.value=24;lg.gain.value=.05;l.connect(lg).connect(g.gain);
+    g.gain.setValueAtTime(.06,t);g.gain.linearRampToValueAtTime(0,t+.5);o.connect(g).connect(master);o.start(t);l.start(t);o.stop(t+.52);l.stop(t+.52)},
+  happy(){[659,784,1047].forEach((f,i)=>tone(f,.14,'triangle',.15,i*.08))},
+  cry(){if(!AC)return;const t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain(),l=AC.createOscillator(),lg=AC.createGain();
+    o.type='triangle';o.frequency.setValueAtTime(620,t);o.frequency.linearRampToValueAtTime(380,t+.9);
+    l.frequency.value=7;lg.gain.value=30;l.connect(lg).connect(o.frequency);
+    g.gain.setValueAtTime(.001,t);g.gain.linearRampToValueAtTime(.17,t+.08);g.gain.linearRampToValueAtTime(.001,t+.95);
+    o.connect(g).connect(master);o.start(t);l.start(t);o.stop(t+1);l.stop(t+1)},
+  no(){tone(220,.12,'square',.1);tone(180,.16,'square',.1,.13)},
+  level(){[523,659,784,1047,784,1047].forEach((f,i)=>tone(f,.2,'square',.12,i*.11))},
+  lose(){[392,349,311,262].forEach((f,i)=>tone(f,.3,'triangle',.15,i*.2))},
+  win(){[523,659,784,1047,1319,1568,2093].forEach((f,i)=>tone(f,.3,'triangle',.17,i*.12))},
+  go(){tone(523,.12,'square',.11);tone(659,.12,'square',.11,.13);tone(784,.25,'square',.13,.26)}
+};
+
+/* ========== ruutu ========== */
+const cv=$('cv'),ctx=cv.getContext('2d');
+let W=0,H=0,DPR=1,S=1,WW=900,WH=600,TOP=70;
+function resize(){DPR=Math.min(2,window.devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;
+  S=Math.max(.5,Math.min(2,Math.min(W,H)/(Math.min(W,H)<520?470:600)));WW=W/S;WH=H/S;TOP=60/S;if(mode==='play'||mode==='pause')layout()}
+addEventListener('resize',resize);
+
+/* ========== peli ========== */
+let mode='menu',lvl=1,t=0,stars=0,animals=[],stations=[],keepers=[],items=[],parts=[],floats=[],hero=null,K=1,starT=0,cryT=0,lastT=0,endT=0;
+function rnd(a,b){return a+Math.random()*(b-a)}
+function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+
+function layout(){
+  const P=LV[lvl-1];
+  // hyllyt ylhäällä
+  const st=[];[...new Set(P.a.map(a=>ANIMALS[a].food))].forEach(f=>st.push({kind:'food',item:f}));
+  if(P.needs.includes('water'))st.push({kind:'water',item:'vesi'});
+  if(P.needs.includes('play'))st.push({kind:'toy',item:'pallo'});
+  if(P.needs.includes('sleep'))st.push({kind:'closet',item:'peitto'});
+  const sw=Math.min(96,(WW-30)/st.length);
+  st.forEach((s,i)=>{s.x=WW/2+(i-(st.length-1)/2)*sw;s.y=TOP+44;s.w=sw-8});
+  stations=st;
+  // eläimet ruudukkoon
+  const ax=24,ay=TOP+150,aw=WW-48,ah=WH-ay-14,n=P.n;
+  let best=null;for(let cols=1;cols<=n;cols++){const rows=Math.ceil(n/cols),cw=aw/cols,ch=ah/rows,k=Math.min(cw/205,ch/170);if(!best||k>best.k)best={cols,rows,cw,ch,k}}
+  K=Math.max(.55,Math.min(1.25,best.k));
+  animals.forEach((a,i)=>{const c=i%best.cols,r=Math.floor(i/best.cols);
+    const inRow=Math.min(best.cols,n-r*best.cols),off=(best.cols-inRow)*best.cw/2;
+    a.x=ax+off+best.cw*(c+.5);a.y=ay+best.ch*(r+.5)-14*K});
+  if(hero){hero.x=Math.min(WW-30,Math.max(30,hero.x));hero.y=Math.min(WH-20,Math.max(TOP+70,hero.y))}
+}
+
+function startLevel(n){
+  lvl=n;const P=LV[n-1];t=0;stars=0;items=[];parts=[];floats=[];starT=4;cryT=0;endT=0;
+  animals=P.a.map((type,i)=>({type,h:78,need:null,nextNeed:rnd(1.5,P.gap[0])+i*1.3,pet:0,busy:0,act:null,fed:0,bob:Math.random()*6,sadCry:0,shake:0}));
+  hero={x:0,y:0,tx:null,ty:null,item:null,face:1,step:0,petting:null};
+  keepers=[];for(let i=0;i<1+Math.floor(n/4);i++)keepers.push({x:rnd(80,700),y:0,tx:0,ty:0,wait:rnd(0,2),col:[C.berry,C.olive,'#7a5cc8'][i%3],face:1,step:0});
+  layout();hero.x=WW/2;hero.y=WH-40;
+  keepers.forEach(k=>{k.x=rnd(40,WW-40);k.y=rnd(TOP+100,WH-30);k.tx=k.x;k.ty=k.y});
+  ptr.down=false;keys={};
+  show(null);$('hud').hidden=false;$('hLv').textContent='Level '+n;mode='play';audio();SFX.go();
+}
+function intro(n){lvl=n;$('iTitle').textContent='Level '+n;$('iText').textContent=LV[n-1].text;show('sIntro');mode='intro';$('hud').hidden=true}
+function show(id){['sMenu','sIntro','sLose','sDone','sWin','sPause'].forEach(s=>$(s).hidden=s!==id)}
+
+function menu(){
+  mode='menu';$('hud').hidden=true;show('sMenu');
+  const hb=$('heroes');hb.innerHTML='';
+  for(const k in HEROES){const H0=HEROES[k],b=document.createElement('button');b.className='hero'+(save.hero===k?' sel':'');b.type='button';
+    const c=document.createElement('canvas');c.width=c.height=16;c.getContext('2d').drawImage(H0.img,0,0);
+    b.appendChild(c);b.insertAdjacentHTML('beforeend','<b>'+H0.name+'</b><small>'+H0.can+'</small>');
+    b.onclick=()=>{audio();save.hero=k;store();SFX.pick();menu()};hb.appendChild(b)}
+  const box=$('levels');box.innerHTML='';let badges=0,tot=0;
+  for(let n=1;n<=10;n++){const b=document.createElement('button');b.className='lv';b.textContent=n;
+    const best=save.best[n];if(best!==undefined){b.classList.add('done');badges++;tot+=best;b.insertAdjacentHTML('beforeend','<small>★ '+best+'</small>')}
+    b.disabled=n>save.unlocked;b.setAttribute('aria-label','Level '+n);b.onclick=()=>{audio();intro(n)};box.appendChild(b)}
+  $('total').textContent=badges?('Levelinappeja '+badges+'/10 · tähtiä yhteensä '+tot):'';
+}
+
+function lose(a){
+  mode='lose';SFX.lose();
+  const sad=animals.filter(x=>x.h<SAD).map(x=>ANIMALS[x.type].name);
+  $('lText').textContent=(sad.length>1?sad.join(' ja ')+' olivat':sad[0]+' oli')+' surullinen, kun aika loppui. Aloitat tämän levelin alusta.';
+  setTimeout(()=>{if(mode==='lose')show('sLose')},700);
+}
+function finish(){
+  mode='done';SFX.level();
+  const prev=save.best[lvl];if(prev===undefined||stars>prev)save.best[lvl]=stars;
+  save.unlocked=Math.max(save.unlocked,Math.min(10,lvl+1));store();
+  for(const a of animals)for(let i=0;i<8;i++)heart(a.x,a.y-30*K);
+  if(lvl===10){setTimeout(()=>{SFX.win();const tot=Object.values(save.best).reduce((a,b)=>a+b,0);$('winText').textContent='Tähtiä kaikista leveleistä yhteensä: '+tot;show('sWin');$('hud').hidden=true;mode='win'},1100);return}
+  setTimeout(()=>{$('badge').textContent=lvl;$('doneText').textContent='Keräsit '+stars+' tähteä.';show('sDone');$('hud').hidden=true},1100);
+}
+
+function float(x,y,text,col){floats.push({x,y,text,col:col||'#fff',life:1.3})}
+function heart(x,y){parts.push({x:x+rnd(-25,25),y,vx:rnd(-40,40),vy:rnd(-140,-60),life:rnd(.8,1.3),kind:'heart'})}
+function sparkle(x,y,col,n){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=rnd(60,240);parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rnd(.4,.9),col,r:rnd(2,5)})}}
+function spawnStar(x,y){items.push({x:Math.min(WW-30,Math.max(30,x)),y:Math.min(WH-24,Math.max(TOP+80,y)),life:11,pop:0})}
+
+function fulfil(a,how){
+  const P=LV[lvl-1];a.need=null;a.pet=0;a.h=Math.min(100,a.h+(save.hero==='Lilli'?55:45));
+  a.nextNeed=rnd(P.gap[0],P.gap[1])/(1+t/P.T*.5);
+  for(let i=0;i<6;i++)heart(a.x,a.y-30*K);
+  spawnStar(a.x+rnd(-70,70)*K,a.y+rnd(40,80)*K);
+  float(a.x,a.y-80*K,['Kiitos!','Jee!','Ihanaa!','Nam!','Iloinen!'][Math.floor(Math.random()*5)],C.gold);
+  if(a.h>=SAD)a.sadCry=0;
+}
+
+/* ========== ohjaus ========== */
+const ptr={down:false,x:0,y:0,lx:0,ly:0,id:null};let keys={};
+function toWorld(e){return{x:e.clientX/S,y:e.clientY/S}}
+function animalAt(p){let best=null,bd=1e9;for(const a of animals){const d=Math.hypot(a.x-p.x,a.y-p.y);if(d<62*K+10&&d<bd){bd=d;best=a}}return best}
+cv.addEventListener('pointerdown',e=>{audio();if(mode!=='play')return;e.preventDefault();const p=toWorld(e);
+  ptr.down=true;ptr.id=e.pointerId;ptr.x=ptr.lx=p.x;ptr.y=ptr.ly=p.y;try{cv.setPointerCapture(e.pointerId)}catch(_){}
+  const an=animalAt(p);if(an){hero.tx=an.x+(hero.x<an.x?-20:20)*K;hero.ty=an.y+78*K}else{hero.tx=p.x;hero.ty=p.y}});
+cv.addEventListener('pointermove',e=>{if(!ptr.down||e.pointerId!==ptr.id||mode!=='play')return;const p=toWorld(e);ptr.x=p.x;ptr.y=p.y;
+  if(!hero.petting){hero.tx=p.x;hero.ty=p.y}});
+function up(e){if(e.pointerId!==ptr.id)return;ptr.down=false;hero.petting=null}
+cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+addEventListener('keydown',e=>{keys[e.key]=true;
+  if([' ','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key))e.preventDefault();
+  if(e.key===' '||e.key==='Enter'){audio();if(mode==='intro'){startLevel(lvl);return}if(mode==='lose'&&!$('sLose').hidden){startLevel(lvl);return}}
+  if(e.key==='Escape'||e.key==='p'||e.key==='P')togglePause()});
+addEventListener('keyup',e=>{keys[e.key]=false});
+function togglePause(){if(mode==='play'){mode='pause';show('sPause')}else if(mode==='pause'){mode='play';show(null);lastT=performance.now()}}
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&mode==='play')togglePause()});
+$('bPause').onclick=togglePause;$('bResume').onclick=togglePause;
+$('bMute').onclick=()=>{muted=!muted;$('bMute').style.opacity=muted?.4:1;if(master)master.gain.value=muted?0:.8};
+$('bGo').onclick=()=>startLevel(lvl);
+$('bRetry').onclick=()=>startLevel(lvl);
+$('bNext').onclick=()=>intro(Math.min(10,lvl+1));
+document.querySelectorAll('[data-menu]').forEach(b=>b.onclick=menu);
+
+/* ========== päivitys ========== */
+function update(dt){
+  for(const p of parts){p.x+=p.vx*dt;p.y+=p.vy*dt;if(p.kind!=='heart')p.vy+=300*dt;p.life-=dt}
+  parts=parts.filter(p=>p.life>0);
+  for(const f of floats){f.y-=40*dt;f.life-=dt}floats=floats.filter(f=>f.life>0);
+  if(mode!=='play')return;
+  const P=LV[lvl-1],HR=HEROES[save.hero];t+=dt;
+  $('hBar').style.width=Math.max(0,100-t/P.T*100)+'%';
+  const ramp=1+t/P.T*.6; // levelin aikana tulee vaikeammaksi
+  // sankarin liike
+  let mx=0,my=0;
+  if(keys.ArrowLeft||keys.a||keys.A)mx-=1;if(keys.ArrowRight||keys.d||keys.D)mx+=1;
+  if(keys.ArrowUp||keys.w||keys.W)my-=1;if(keys.ArrowDown||keys.s||keys.S)my+=1;
+  let moving=false;
+  if(mx||my){const l=Math.hypot(mx,my);hero.x+=mx/l*HR.speed*dt;hero.y+=my/l*HR.speed*dt;hero.tx=null;moving=true;if(mx)hero.face=mx>0?1:-1}
+  else if(hero.tx!==null&&!hero.petting){const dx=hero.tx-hero.x,dy=hero.ty-hero.y,d=Math.hypot(dx,dy);
+    if(d>6){const s=Math.min(d,HR.speed*dt);hero.x+=dx/d*s;hero.y+=dy/d*s;moving=true;if(Math.abs(dx)>3)hero.face=dx>0?1:-1}else if(!ptr.down)hero.tx=null}
+  hero.x=Math.min(WW-24,Math.max(24,hero.x));hero.y=Math.min(WH-16,Math.max(TOP+64,hero.y));
+  hero.step+=moving?dt*12:0;
+  // tavaran haku hyllystä
+  for(const s of stations){if(Math.abs(hero.x-s.x)<s.w/2+8&&hero.y<s.y+66&&hero.item!==s.item){hero.item=s.item;SFX.pick();float(s.x,s.y+50,ITEM_NAME[s.item]);sparkle(s.x,s.y+30,C.gold,6)}}
+  // silittäminen: sormi tai hiiri edestakaisin eläimen päällä
+  hero.petting=null;
+  if(ptr.down){const a=animalAt(ptr);if(a&&dist(a,hero)<115*K+30&&!a.act){hero.petting=a;hero.tx=null;
+    const mv=Math.hypot(ptr.x-ptr.lx,ptr.y-ptr.ly);a.pet+=(mv/240+dt*.35)*HR.pet;if(a.need!=='pet')a.h=Math.min(100,a.h+(mv/30+dt*2)*HR.pet)}}
+  if(keys[' ']){let a=null;for(const b of animals)if(dist(b,hero)<115*K+30&&!b.act&&(!a||dist(b,hero)<dist(a,hero)))a=b;
+    if(a){hero.petting=a;a.pet+=dt*.8*HR.pet;if(a.need!=='pet')a.h=Math.min(100,a.h+dt*6)}}
+  ptr.lx=ptr.x;ptr.ly=ptr.y;
+  if(hero.petting){const a=hero.petting;a.petT=(a.petT||0)-dt;if(a.petT<=0){a.petT=.18;heart(a.x,a.y-20*K)}a.purrT=(a.purrT||0)-dt;if(a.purrT<=0){a.purrT=.55;SFX.purr()}
+    if(a.need==='pet'&&a.pet>=1){fulfil(a,'pet');SFX.happy()}}
+  // eläimet
+  for(const a of animals){
+    a.bob+=dt*(a.h<SAD?2:5);if(a.shake>0)a.shake-=dt;
+    if(a.act){a.act.t-=dt;if(a.act.t<=0)a.act=null;else{a.h=Math.min(100,a.h+dt*4);continue}}
+    if(a.need){a.h-=P.decay*ramp*dt;if(a.need!=='pet')a.pet=0}
+    else{a.h=Math.min(100,a.h+dt*2.5);a.nextNeed-=dt;if(a.nextNeed<=0){const ns=P.needs;a.need=ns[Math.floor(Math.random()*ns.length)];a.pet=0;tone(880,.08,'sine',.07)}}
+    if(a.h<0)a.h=0;
+    if(a.h<SAD){a.sadCry-=dt;if(a.sadCry<=0){a.sadCry=2.6;if(cryT<=0){SFX.cry();cryT=1.4}}
+      if(Math.random()<dt*4)parts.push({x:a.x+rnd(-14,14)*K,y:a.y-20*K,vx:rnd(-20,20),vy:-30,life:.7,col:'#7fd2ff',r:3})}
+    // anna tavara
+    if(hero.item&&a.need&&a.need!=='pet'&&dist(a,hero)<85*K+25){
+      const want=a.need==='food'?ANIMALS[a.type].food:NEED_ITEM[a.need];
+      if(hero.item===want){hero.item=null;
+        if(a.need==='food'){a.act={kind:'eat',t:1.4,item:want};a.fed=6;SFX.eat()}
+        else if(a.need==='water'){a.act={kind:'drink',t:1.2};SFX.drink()}
+        else if(a.need==='play'){a.act={kind:'play',t:1.8};SFX.play()}
+        else if(a.need==='sleep'){a.act={kind:'sleep',t:4};SFX.sleep()}
+        fulfil(a,a.need)}
+      else if(a.shake<=0){a.shake=.5;SFX.no();float(a.x,a.y-90*K,'Ei tuota!','#ffb3c6')}
+    }
+    if(a.fed>0)a.fed-=dt;
+  }
+  if(cryT>0)cryT-=dt;
+  // tähdet
+  starT-=dt;if(starT<=0){starT=rnd(5,8);if(items.length<4)spawnStar(rnd(40,WW-40),rnd(TOP+130,WH-30))}
+  for(const s of items){s.life-=dt;s.pop=Math.min(1,s.pop+dt*4);const d=dist(s,hero);
+    if(d<HR.magnet+30&&d>1){const pull=HR.magnet>60?Math.min(d,420*dt):0;s.x+=(hero.x-s.x)/d*pull;s.y+=(hero.y-20-s.y)/d*pull}
+    if(dist(s,hero)<44){s.life=0;s.got=1;stars++;SFX.star();sparkle(s.x,s.y,C.gold,14);float(s.x,s.y-20,'+1 ★',C.gold)}}
+  items=items.filter(s=>s.life>0);$('hStars').textContent='★ '+stars;
+  // hoitajat kävelevät
+  for(const k of keepers){if(k.wait>0){k.wait-=dt;continue}const dx=k.tx-k.x,dy=k.ty-k.y,d=Math.hypot(dx,dy);
+    if(d<4){k.wait=rnd(1,3);const a=animals[Math.floor(Math.random()*animals.length)];k.tx=Math.min(WW-30,Math.max(30,a.x+rnd(-90,90)));k.ty=Math.min(WH-20,Math.max(TOP+100,a.y+rnd(40,80)*K))}
+    else{const s=Math.min(d,90*dt);k.x+=dx/d*s;k.y+=dy/d*s;k.face=dx>0?1:-1;k.step+=dt*8}}
+  // aika loppuu
+  if(t>=P.T){if(animals.some(a=>a.h<SAD))lose();else finish()}
+}
+
+/* ========== piirto ========== */
+function rr(x,y,w,h,r){ctx.beginPath();ctx.roundRect?ctx.roundRect(x,y,w,h,r):ctx.rect(x,y,w,h)}
+function outline(lw){ctx.lineWidth=lw||3;ctx.strokeStyle=C.ink;ctx.stroke()}
+function circ(x,y,r,col,lw){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();if(lw!==0)outline(lw)}
+function ell(x,y,rx,ry,col,lw){ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();if(lw!==0)outline(lw)}
+function drawItem(it,x,y,s){
+  ctx.save();ctx.translate(x,y);ctx.scale(s,s);ctx.lineJoin='round';
+  if(it==='luu'){ctx.beginPath();ctx.rect(-11,-4,22,8);ctx.fillStyle='#fff';ctx.fill();outline(2.5);[-11,11].forEach(px=>[-4,4].forEach(py=>circ(px,py,5,'#fff',2.5)));ctx.fillStyle='#fff';ctx.fillRect(-11,-3,22,6)}
+  else if(it==='kala'){ctx.beginPath();ctx.moveTo(9,0);ctx.lineTo(17,-8);ctx.lineTo(17,8);ctx.closePath();ctx.fillStyle='#4fa3e0';ctx.fill();outline(2.5);ell(-2,0,13,8,'#4fa3e0',2.5);circ(-8,-2,1.8,C.ink,0)}
+  else if(it==='porkkana'){ctx.beginPath();ctx.moveTo(-4,-10);ctx.lineTo(6,-10);ctx.lineTo(1,15);ctx.closePath();ctx.fillStyle='#f28a2e';ctx.fill();outline(2.5);
+    ctx.beginPath();ctx.moveTo(1,-10);ctx.lineTo(-5,-19);ctx.moveTo(1,-10);ctx.lineTo(1,-20);ctx.moveTo(1,-10);ctx.lineTo(7,-18);ctx.strokeStyle='#3fae4a';ctx.lineWidth=3.5;ctx.stroke()}
+  else if(it==='juusto'){ctx.beginPath();ctx.moveTo(-14,8);ctx.lineTo(14,8);ctx.lineTo(14,-6);ctx.lineTo(-14,4);ctx.closePath();ctx.fillStyle=C.gold;ctx.fill();outline(2.5);circ(4,2,2.5,'#e0b020',0);circ(-6,5,1.8,'#e0b020',0)}
+  else if(it==='omena'){circ(0,2,11,'#e8475f',2.5);ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(1,-14);ctx.strokeStyle=C.olive;ctx.lineWidth=3;ctx.stroke();ell(6,-12,5,3,'#3fae4a',2)}
+  else if(it==='salaatti'){circ(0,0,12,'#7fd36a',2.5);circ(-4,-3,6,'#a5e48f',0);circ(5,3,5,'#a5e48f',0)}
+  else if(it==='vesi'){ctx.beginPath();ctx.moveTo(0,-14);ctx.bezierCurveTo(10,-2,11,4,0,12);ctx.bezierCurveTo(-11,4,-10,-2,0,-14);ctx.fillStyle='#4fb6ff';ctx.fill();outline(2.5);circ(-3,2,2.5,'#d6f0ff',0)}
+  else if(it==='pallo'){circ(0,0,12,C.berry,2.5);ctx.beginPath();ctx.arc(0,0,12,-.6,.6);ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.stroke();ctx.beginPath();ctx.arc(0,0,12,Math.PI-.6,Math.PI+.6);ctx.stroke()}
+  else if(it==='peitto'){rr(-14,-10,28,20,4);ctx.fillStyle='#f38bb0';ctx.fill();outline(2.5);ctx.fillStyle='#fff';[-7,7].forEach(px=>[-4,4].forEach(py=>{ctx.fillRect(px-2,py-2,4,4)}))}
+  else if(it==='heart'){ctx.beginPath();ctx.moveTo(0,10);ctx.bezierCurveTo(-16,-2,-8,-14,0,-5);ctx.bezierCurveTo(8,-14,16,-2,0,10);ctx.fillStyle=C.berry;ctx.fill();outline(2.5)}
+  else if(it==='zzz'){ctx.fillStyle='#5a6cff';ctx.font='900 18px '+getComputedStyle(document.body).fontFamily;ctx.textAlign='center';ctx.fillText('Zzz',0,6)}
+  ctx.restore();
+}
+function drawStation(s){
+  const w=s.w,h=58,x=s.x-w/2,y=s.y-h/2;
+  if(s.kind==='closet'){rr(x,y-6,w,h+12,8);ctx.fillStyle=C.olive;ctx.fill();outline(3);ctx.fillStyle='#6b6436';ctx.fillRect(x+6,y,w/2-9,h);ctx.fillRect(s.x+3,y,w/2-9,h);circ(s.x-6,s.y,2.5,C.gold,0);circ(s.x+6,s.y,2.5,C.gold,0)}
+  else if(s.kind==='water'){rr(x+4,y+18,w-8,h-14,8);ctx.fillStyle='#e6f6fb';ctx.fill();outline(3);rr(s.x-4,y-4,8,20,3);ctx.fillStyle='#b8c4cc';ctx.fill();outline(2.5);rr(s.x-4,y-6,20,8,3);ctx.fill();outline(2.5);
+    const dy=(performance.now()/400)%1;ctx.globalAlpha=1-dy;drawItem('vesi',s.x+12,y+6+dy*16,.35);ctx.globalAlpha=1}
+  else{rr(x,y+10,w,h-10,8);ctx.fillStyle=s.kind==='toy'?C.berry:'#a8714a';ctx.fill();outline(3);ctx.fillStyle='rgba(255,255,255,.18)';ctx.fillRect(x+4,y+16,w-8,6)}
+  drawItem(s.item,s.x,s.kind==='closet'?s.y:s.y-2,s.kind==='closet'?.9:1.1);
+  ctx.fillStyle='#fff';ctx.font='700 12px "Atkinson Hyperlegible",system-ui';ctx.textAlign='center';ctx.lineWidth=3;ctx.strokeStyle=C.ink;
+  ctx.strokeText(ITEM_NAME[s.item],s.x,y+h+12);ctx.fillText(ITEM_NAME[s.item],s.x,y+h+12);
+  if(hero&&hero.item===s.item){ctx.strokeStyle=C.gold;ctx.lineWidth=3;rr(x-4,y-10,w+8,h+28,10);ctx.stroke()}
+}
+function drawAnimal(a){
+  const A=ANIMALS[a.type],k=K,x=a.x,y=a.y,happy=a.h>=70,sad=a.h<SAD;
+  // sänky ja kuppi
+  ctx.save();ctx.translate(x,y);ctx.scale(k,k);
+  rr(-62,8,124,46,14);ctx.fillStyle=C.ice;ctx.fill();outline(3);rr(-62,26,124,28,12);ctx.fillStyle=C.berry;ctx.fill();outline(3);
+  ell(74,44,20,9,C.mint,3);if(a.fed>0)drawItem(A.food,74,38,.6);
+  // iloisuusmittari
+  rr(-44,62,88,12,6);ctx.fillStyle='rgba(27,36,48,.55)';ctx.fill();
+  rr(-44,62,88*a.h/100,12,6);ctx.fillStyle=a.h>=70?C.mint:a.h>=SAD?C.gold:'#ff6b6b';ctx.fill();rr(-44,62,88,12,6);outline(2.5);
+  ctx.restore();
+  const act=a.act&&a.act.kind;let bx=0,by=Math.sin(a.bob)*(sad?1:3);
+  if(a.shake>0)bx=Math.sin(a.shake*40)*5;
+  if(act==='play')by=-Math.abs(Math.sin(performance.now()/120))*24;
+  ctx.save();ctx.translate(x+bx*k,y+by*k);ctx.scale(k,k);
+  if(act==='sleep'){ctx.rotate(-.15)}
+  const col=A.col,dk=A.dark;
+  // keho
+  if(a.type==='kilppari'){ell(-30,14,9,6,col,3);ell(26,14,9,6,col,3);circ(30,-6,14,col,3);ctx.beginPath();ctx.arc(0,12,32,Math.PI,0);ctx.closePath();ctx.fillStyle=C.mint;ctx.fill();outline(3);
+    ctx.fillStyle='#2fb488';[[-14,0],[0,-8],[14,0]].forEach(p=>{ctx.beginPath();ctx.arc(p[0],p[1],7,0,7);ctx.fill()})}
+  else{
+    if(a.type==='hiiri'){ctx.beginPath();ctx.moveTo(-26,12);ctx.quadraticCurveTo(-50,0,-44,-18);ctx.strokeStyle='#e89ab0';ctx.lineWidth=4;ctx.stroke()}
+    if(a.type==='kissa'||a.type==='koira'){ctx.beginPath();ctx.moveTo(-26,6);ctx.quadraticCurveTo(-44,-8+Math.sin(a.bob*3)*8,-36,-26);ctx.strokeStyle=C.ink;ctx.lineWidth=11;ctx.stroke();ctx.strokeStyle=col;ctx.lineWidth=6;ctx.stroke()}
+    ell(-2,12,32,20,col,3);
+    const hx=8,hy=-16,hr=22;
+    if(a.type==='pupu'){[-9,9].forEach(o=>{ell(hx+o,hy-32,7,20,col,3);ell(hx+o,hy-30,3,13,'#f6a5c0',0)})}
+    if(a.type==='kissa'){[-1,1].forEach(o=>{ctx.beginPath();ctx.moveTo(hx+o*18,hy-8);ctx.lineTo(hx+o*16,hy-30);ctx.lineTo(hx+o*4,hy-18);ctx.closePath();ctx.fillStyle=col;ctx.fill();outline(3)})}
+    if(a.type==='hiiri'){[-1,1].forEach(o=>{circ(hx+o*17,hy-17,11,col,3);circ(hx+o*17,hy-17,6,'#f6a5c0',0)})}
+    if(a.type==='possu'){[-1,1].forEach(o=>{ctx.beginPath();ctx.moveTo(hx+o*16,hy-12);ctx.lineTo(hx+o*18,hy-28);ctx.lineTo(hx+o*6,hy-19);ctx.closePath();ctx.fillStyle=dk;ctx.fill();outline(3)})}
+    circ(hx,hy,hr,col,3);
+    if(a.type==='koira'){[-1,1].forEach(o=>{ell(hx+o*20,hy-2,8,15,dk,3)})}
+    if(a.type==='possu'){ell(hx,hy+8,9,6,'#f48fb1',2.5);circ(hx-3,hy+8,1.6,C.ink,0);circ(hx+3,hy+8,1.6,C.ink,0)}
+    else{circ(hx,hy+6,3.5,C.ink,0)}
+    if(a.type==='kissa'||a.type==='hiiri'){ctx.strokeStyle=C.ink;ctx.lineWidth=1.5;ctx.beginPath();[-1,1].forEach(o=>{ctx.moveTo(hx+o*6,hy+6);ctx.lineTo(hx+o*22,hy+2);ctx.moveTo(hx+o*6,hy+8);ctx.lineTo(hx+o*22,hy+10)});ctx.stroke()}
+  }
+  // kasvot
+  const ex=a.type==='kilppari'?30:8,ey=a.type==='kilppari'?-9:-20,sp=a.type==='kilppari'?5:8;
+  ctx.strokeStyle=C.ink;ctx.lineWidth=3;ctx.lineCap='round';
+  if(act==='sleep'){[-1,1].forEach(o=>{ctx.beginPath();ctx.arc(ex+o*sp,ey,3.5,.2,Math.PI-.2);ctx.stroke()})}
+  else if(happy||act){[-1,1].forEach(o=>{ctx.beginPath();ctx.arc(ex+o*sp,ey+2,4,Math.PI+.3,-.3);ctx.stroke()})}
+  else{[-1,1].forEach(o=>circ(ex+o*sp,ey,3.4,C.ink,0))}
+  const my=a.type==='kilppari'?ey+8:ey+16;ctx.beginPath();
+  if(sad)ctx.arc(ex,my+5,5,Math.PI+.4,-.4);else if(act==='eat')ctx.arc(ex,my+1,4,0,Math.PI*2);else ctx.arc(ex,my-1,5,.4,Math.PI-.4);ctx.stroke();
+  if(sad){circ(ex-sp,ey+7,2.5,'#7fd2ff',0);circ(ex+sp,ey+7,2.5,'#7fd2ff',0)}
+  if(happy&&!act){circ(ex-sp-4,ey+8,3.5,'rgba(244,120,160,.6)',0);circ(ex+sp+4,ey+8,3.5,'rgba(244,120,160,.6)',0)}
+  if(act==='sleep'){rr(-40,4,70,28,8);ctx.fillStyle='#f38bb0';ctx.fill();outline(3)}
+  if(act==='eat'||act==='drink')drawItem(act==='eat'?a.act.item:'vesi',ex,my+14,.6);
+  ctx.restore();
+  if(act==='sleep'){ctx.globalAlpha=.6+.4*Math.sin(performance.now()/300);drawItem('zzz',x+28*k,y-58*k-((performance.now()/40)%20),1);ctx.globalAlpha=1}
+  if(act==='play'){drawItem('pallo',x+50*k,y-10*k-Math.abs(Math.cos(performance.now()/120))*40*k,.9*k)}
+  // tarvekupla
+  if(a.need&&!act){
+    const bxx=x+30*k,byy=y-82*k,pulse=a.h<50?1+Math.sin(performance.now()/120)*.08:1;
+    ctx.save();ctx.translate(bxx,byy);ctx.scale(k*pulse,k*pulse);
+    ctx.beginPath();ctx.arc(0,0,24,0,Math.PI*2);ctx.moveTo(-8,20);ctx.lineTo(-18,34);ctx.lineTo(4,22);ctx.fillStyle=a.h<SAD?'#ffd6dc':'#fff';ctx.fill();outline(3);
+    if(a.need==='pet'){drawItem('heart',0,-1,1.1)}
+    else drawItem(a.need==='food'?A.food:NEED_ITEM[a.need],0,0,1);
+    if(a.need==='pet'&&a.pet>0){ctx.beginPath();ctx.arc(0,0,29,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(1,a.pet));ctx.strokeStyle=C.berry;ctx.lineWidth=6;ctx.stroke()}
+    ctx.restore();
+  }
+}
+function drawPerson(k){
+  ctx.save();ctx.translate(k.x,k.y);ctx.scale(K*.9*k.face,K*.9);const sw=Math.sin(k.step)*4;
+  ell(0,0,20,6,'rgba(0,0,0,.18)',0);
+  rr(-9,-26,7,26,3);ctx.fillStyle=C.ink;ctx.fill();rr(2,-26,7,26+sw*0,3);ctx.fill();
+  rr(-14,-60,28,38,10);ctx.fillStyle='#fff';ctx.fill();outline(3);ctx.fillStyle=k.col;ctx.fillRect(-12,-40,24,6);
+  circ(0,-72,13,'#f2c19a',3);ctx.beginPath();ctx.arc(0,-74,13,Math.PI,0);ctx.fillStyle=k.col===C.olive?'#a8714a':C.ink;ctx.fill();
+  circ(4,-71,1.8,C.ink,0);
+  ctx.restore();
+}
+function drawHero(){
+  const HR=HEROES[save.hero],[bx,by,bw,bh]=HR.box,ps=Math.min(6.5,76/Math.max(bw,bh))*K,w=bw*ps,h=bh*ps;
+  const hop=hero.step?Math.abs(Math.sin(hero.step))*6:0;
+  ell(hero.x,hero.y,w*.42,7,'rgba(0,0,0,.2)',0);
+  ctx.save();ctx.translate(hero.x,hero.y-hop);ctx.scale(hero.face,1);ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(HR.img,bx,by,bw,bh,-w/2,-h,w,h);ctx.restore();
+  if(hero.item){const ix=hero.x,iy=hero.y-h-24-hop;circ(ix,iy,20,'rgba(255,255,255,.9)',3);drawItem(hero.item,ix,iy,1)}
+}
+function drawRoom(){
+  // sininen rakennus sisältä
+  ctx.fillStyle=C.floor;ctx.fillRect(0,0,WW,WH);
+  const tile=64;ctx.fillStyle=C.floor2;for(let y=TOP+90;y<WH;y+=tile)for(let x=((y/tile)&1)*tile;x<WW;x+=tile*2)ctx.fillRect(x,y,tile,tile);
+  ctx.fillStyle=C.wall;ctx.fillRect(0,0,WW,TOP+90);
+  ctx.fillStyle='#3585b4';for(let x=20;x<WW;x+=46)ctx.fillRect(x,0,4,TOP+90);
+  ctx.fillStyle=C.mint;ctx.fillRect(0,TOP+82,WW,10);ctx.fillStyle=C.ink;ctx.fillRect(0,TOP+92,WW,3);
+}
+function draw(){
+  ctx.setTransform(DPR*S,0,0,DPR*S,0,0);
+  if(mode==='menu'||!hero){drawMenuBg();return}
+  drawRoom();
+  stations.forEach(drawStation);
+  // syvyysjärjestys
+  const list=[...animals.map(a=>({y:a.y+30*K,f:()=>drawAnimal(a)})),...keepers.map(k=>({y:k.y,f:()=>drawPerson(k)})),{y:hero.y,f:drawHero}];
+  for(const s of items)list.push({y:s.y,f:()=>{const blink=s.life<2&&Math.floor(s.life*8)%2;if(blink)return;const sc=s.pop*(1+Math.sin(performance.now()/200)*.08);
+    ctx.save();ctx.translate(s.x,s.y);ctx.scale(sc,sc);starShape(0,0,16,7);ctx.fillStyle=C.gold;ctx.fill();outline(3);ctx.restore()}});
+  list.sort((a,b)=>a.y-b.y).forEach(o=>o.f());
+  // kitty haistaa surullisimman eläimen
+  if(HEROES[save.hero].sniff&&mode==='play'){let w=null;for(const a of animals)if(a.need&&!a.act&&(!w||a.h<w.h))w=a;
+    if(w&&w.h<60){const d=dist(w,hero);if(d>120){const ux=(w.x-hero.x)/d,uy=(w.y-hero.y)/d,ax=hero.x+ux*60,ay=hero.y-40+uy*60;
+      ctx.save();ctx.translate(ax,ay);ctx.rotate(Math.atan2(uy,ux));ctx.beginPath();ctx.moveTo(14,0);ctx.lineTo(-8,-10);ctx.lineTo(-8,10);ctx.closePath();ctx.fillStyle=C.gold;ctx.fill();outline(2.5);ctx.restore()}}}
+  for(const p of parts){ctx.globalAlpha=Math.max(0,Math.min(1,p.life*2));if(p.kind==='heart')drawItem('heart',p.x,p.y,.55);else circ(p.x,p.y,p.r,p.col,0)}
+  ctx.globalAlpha=1;ctx.textAlign='center';ctx.font='400 20px Bungee,"Arial Black",sans-serif';ctx.lineJoin='round';
+  for(const f of floats){ctx.globalAlpha=Math.min(1,f.life*2);ctx.lineWidth=5;ctx.strokeStyle=C.ink;ctx.strokeText(f.text,f.x,f.y);ctx.fillStyle=f.col;ctx.fillText(f.text,f.x,f.y)}
+  ctx.globalAlpha=1;
+  // viimeiset sekunnit
+  if(mode==='play'){const left=LV[lvl-1].T-t;if(left<=5){ctx.font='400 '+(46)+'px Bungee,"Arial Black",sans-serif';ctx.lineWidth=7;ctx.strokeStyle=C.ink;ctx.strokeText(Math.ceil(left),WW/2,TOP+150);ctx.fillStyle=C.gold;ctx.fillText(Math.ceil(left),WW/2,TOP+150)}}
+}
+function starShape(x,y,R,r){ctx.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,rad=i%2?r:R;ctx.lineTo(x+Math.cos(a)*rad,y+Math.sin(a)*rad)}ctx.closePath()}
+let bgA=null;
+function drawMenuBg(){
+  ctx.fillStyle=C.sky;ctx.fillRect(0,0,WW,WH);
+  if(!bgA){bgA=Object.keys(ANIMALS).map((type,i)=>({type,h:90,bob:i,x:0,y:0,need:null,fed:0,shake:0}))}
+  const k=K;K=Math.min(1,WW/900);bgA.forEach((a,i)=>{a.x=WW*(i+.5)/bgA.length;a.y=WH-90*K;a.bob+=.03;drawAnimal(a)});K=k;
+}
+
+/* ========== silmukka ========== */
+function loop(now){const dt=Math.min(.05,(now-lastT)/1000||0);lastT=now;if(mode!=='pause')update(dt);draw();requestAnimationFrame(loop)}
+resize();menu();requestAnimationFrame(loop);
+</script>
+</body></html>
