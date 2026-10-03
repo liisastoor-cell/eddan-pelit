@@ -275,7 +275,7 @@ textarea{min-height:88px;resize:vertical}
     <div class="poster" id="poster"></div>
     <div class="next">
       <h3>Seuraava askel: peli oikeasti toimimaan</h3>
-      <p>Kun suunnitelma tuntuu valmiilta, paina <b>Peli on valmis!</b> Sitten sano äidille, että peli on valmis. Claude hakee suunnitelman itse, tekee pelistä ensimmäisen version, ja sitten sitä testataan ja parannetaan yhdessä.</p>
+      <p>Kun suunnitelma tuntuu valmiilta, paina <b>Peli on valmis!</b> Sitten kirjoita Claudelle: <b>peli on valmis</b>. Claude hakee suunnitelman itse, tekee pelistä ensimmäisen version, ja sitten sitä testataan ja parannetaan yhdessä.</p>
       <div class="row"><button class="btn mint" id="readyBtn" type="button">Peli on valmis!</button></div>
       <p id="readyMsg" class="readymsg" hidden></p>
       <div class="row"><button class="btn small" id="exportBtn" type="button">Kopioi suunnitelma tekstinä</button></div>
@@ -711,7 +711,7 @@ function planText(){
 }
 /* Peli on valmis: merkitään valmiiksi tälle laitteelle, josta Claude hakee sen Chromen kautta */
 function showReady(){const g=cur(),m=$('#readyMsg'),b=$('#readyBtn');
-  if(g.ready){m.hidden=false;m.textContent='Valmis! Sano äidille, että '+(g.name||'peli')+' on valmis, niin Claude hakee sen.';b.textContent='Päivitä valmis peli'}
+  if(g.ready){m.hidden=false;m.textContent='Valmis! Kirjoita nyt Claudelle: '+(g.name||'peli')+' on valmis. Claude hakee sen itse.';b.textContent='Päivitä valmis peli'}
   else{m.hidden=true;b.textContent='Peli on valmis!'}}
 $('#readyBtn').addEventListener('click',()=>{
   const g=cur();g.ready=Date.now();changed();
