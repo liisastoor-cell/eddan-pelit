@@ -50,6 +50,7 @@ h3{font-size:18px;margin:0}
 .btn{font-family:var(--display);font-size:15px;color:var(--ink);background:var(--card);border:3px solid var(--ink);border-radius:12px;padding:.5em .9em;box-shadow:0 4px 0 var(--ink);cursor:pointer;transition:transform .06s,box-shadow .06s;touch-action:manipulation}
 .btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
 .btn.pink{background:var(--pink)}.btn.sun{background:var(--sun)}.btn.sky{background:var(--sky)}.btn.mint{background:var(--mint)}
+.readymsg{font-weight:700;background:var(--mint);border:3px solid var(--ink);border-radius:12px;padding:.5em .8em;margin:8px 0}
 .btn.small{font-size:13px;padding:.38em .7em;box-shadow:0 3px 0 var(--ink)}
 .btn.warn{background:#ffd9d9}
 .btn[aria-pressed="true"]{background:var(--sun)}
@@ -274,8 +275,10 @@ textarea{min-height:88px;resize:vertical}
     <div class="poster" id="poster"></div>
     <div class="next">
       <h3>Seuraava askel: peli oikeasti toimimaan</h3>
-      <p>Kun suunnitelma tuntuu valmiilta, pyydä äitiä kertomaan Claudelle: "Rakenna peli Eddan suunnitelmasta." Claude lukee tämän julisteen, tekee pelistä ensimmäisen version, ja sitten sitä testataan ja parannetaan yhdessä.</p>
-      <div class="row"><button class="btn small mint" id="exportBtn" type="button">Kopioi suunnitelma Claudelle</button></div>
+      <p>Kun suunnitelma tuntuu valmiilta, paina <b>Peli on valmis!</b> Sitten sano äidille, että peli on valmis. Claude hakee suunnitelman itse, tekee pelistä ensimmäisen version, ja sitten sitä testataan ja parannetaan yhdessä.</p>
+      <div class="row"><button class="btn mint" id="readyBtn" type="button">Peli on valmis!</button></div>
+      <p id="readyMsg" class="readymsg" hidden></p>
+      <div class="row"><button class="btn small" id="exportBtn" type="button">Kopioi suunnitelma tekstinä</button></div>
       <textarea id="exportOut" readonly hidden aria-label="Suunnitelma kopioitavaksi"></textarea>
     </div>
     <div class="navrow"><button class="btn small" data-go="rules">Takaisin</button><button class="btn small sky" data-go="idea">Takaisin alkuun</button></div>
@@ -701,19 +704,31 @@ document.querySelectorAll('label.field').forEach(lab=>{
 document.querySelectorAll('.step,[data-go]').forEach(b=>b.addEventListener('click',stopRec));
 
 /* ---------- vienti ---------- */
-$('#exportBtn').addEventListener('click',()=>{
+function planText(){
   const g=clone(cur());
   g.characters.forEach(c=>{if(c.mode==='words')delete c.pixels;else c.pixels=c.pixels.map(p=>p||'.').join(',')});if(g.worldMode==='words')g.worldNote='Maailma on kuvailtu sanoin kentässä look';
-  const text='EDDAN PELISUUNNITELMA – rakenna peli tästä:\n'+JSON.stringify(g);
+  return 'EDDAN PELISUUNNITELMA – rakenna peli tästä:\n'+JSON.stringify(g);
+}
+/* Peli on valmis: merkitään valmiiksi tälle laitteelle, josta Claude hakee sen Chromen kautta */
+function showReady(){const g=cur(),m=$('#readyMsg'),b=$('#readyBtn');
+  if(g.ready){m.hidden=false;m.textContent='Valmis! Sano äidille, että '+(g.name||'peli')+' on valmis, niin Claude hakee sen.';b.textContent='Päivitä valmis peli'}
+  else{m.hidden=true;b.textContent='Peli on valmis!'}}
+$('#readyBtn').addEventListener('click',()=>{
+  const g=cur();g.ready=Date.now();changed();
+  lsSet('studio-valmis',{id:g.id,name:g.name||'Nimetön peli',ready:g.ready,text:planText()});
+  showReady();const b=$('#readyBtn');b.textContent='Tallennettu!';setTimeout(showReady,1800);
+});
+$('#exportBtn').addEventListener('click',()=>{
+  const text=planText();
   const out=$('#exportOut'),btn=$('#exportBtn');out.value=text;
-  const ok=()=>{btn.textContent='Kopioitu! Liitä se Claudelle';setTimeout(()=>btn.textContent='Kopioi suunnitelma Claudelle',2500)};
+  const ok=()=>{btn.textContent='Kopioitu!';setTimeout(()=>btn.textContent='Kopioi suunnitelma tekstinä',2500)};
   const fallback=()=>{out.hidden=false;out.focus();out.select();btn.textContent='Valitse teksti ja kopioi'};
   try{navigator.clipboard.writeText(text).then(ok,fallback)}catch(e){fallback()}
 });
 
 /* ---------- lataus ---------- */
 function loadAll(){
-  const g=cur();
+  const g=cur();try{showReady()}catch(e){}
   $('#gName').value=g.name;$('#gIdea').value=g.idea;$('#gPlace').value=g.place;$('#gLook').value=g.look||'';renderWorldMode();
   $('#rMove').value=g.rules.move;$('#rWin').value=g.rules.win;$('#rDanger').value=g.rules.danger;$('#rCollect').value=g.rules.collect;$('#rLose').value=g.rules.lose;$('#rSound').value=g.rules.sound;$('#rLevels').value=g.rules.levels;
   chips('#cTypes',TYPES,'types');chips('#cDevices',DEVICES,'devices');chips('#cMood',MOODS,'mood');
