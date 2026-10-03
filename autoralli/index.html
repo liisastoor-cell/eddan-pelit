@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="fi"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#3fb6ff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Autoralli</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* Eddan suunnittelema peli. Värit Eddan omasta väripaletista. */
+:root{--pink:#ff5d8f;--gold:#ffd23f;--blue:#3fb6ff;--mint:#5fd6a8;--ink:#271f3d;
+  --display:"Bungee","Arial Black",Impact,sans-serif;--body:"Atkinson Hyperlegible",system-ui,sans-serif}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--blue);color:#fff;font-family:var(--body);overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+canvas#cv{position:fixed;inset:0;width:100%;height:100%;display:block}
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px 16px;text-align:center;background:rgba(39,31,61,.72);overflow:auto}
+.screen[hidden],[hidden]{display:none!important}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(40px,10vw,84px);line-height:.95;margin:0;color:var(--gold);-webkit-text-stroke:2px var(--ink);paint-order:stroke fill;text-shadow:0 5px 0 var(--ink)}
+h1 span{color:var(--pink)}
+h2{font-family:var(--display);font-weight:400;font-size:clamp(28px,6vw,46px);margin:0;color:var(--gold);text-shadow:0 4px 0 var(--ink)}
+p{margin:0;font-size:18px;max-width:34em}
+.credit{font-size:15px;opacity:.9}
+.btn{font-family:var(--display);font-size:20px;color:var(--ink);background:var(--mint);border:4px solid var(--ink);border-radius:999px;padding:.45em 1.3em;box-shadow:0 5px 0 var(--ink);cursor:pointer;touch-action:manipulation}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--ink)}
+.btn.small{font-size:15px;padding:.35em 1em;background:#fff}
+.levels{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;width:min(480px,100%)}
+.lv{position:relative;font-family:var(--display);font-size:22px;aspect-ratio:1;border:4px solid var(--ink);border-radius:50%;background:#fff;color:var(--ink);cursor:pointer;box-shadow:0 4px 0 var(--ink);padding:0;touch-action:manipulation}
+.lv.done{background:var(--gold)}
+.lv:disabled{background:#5b5376;color:#9890b3;cursor:default;box-shadow:none}
+.lv small{position:absolute;left:0;right:0;bottom:-1px;font-family:var(--body);font-size:11px;font-weight:700}
+.howto{font-size:16px;opacity:.95;max-width:31em}
+.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.hero{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.12);border:3px solid #fff;border-radius:16px;padding:8px 14px}
+.hero canvas{width:56px;height:56px;image-rendering:pixelated}
+.hero b{font-family:var(--display);font-weight:400;font-size:18px;display:block;text-align:left}
+.hero span{font-size:14px;display:block;text-align:left}
+.hud{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;gap:8px;padding:8px 10px;padding-top:max(8px,env(safe-area-inset-top));pointer-events:none;font-family:var(--display);font-size:17px;text-shadow:0 2px 0 var(--ink)}
+.hud .pill{background:rgba(39,31,61,.72);border:2px solid #fff;border-radius:999px;padding:.12em .7em;white-space:nowrap}
+.hud .pos{background:var(--pink);font-size:19px}
+.hud .bar{flex:1;height:14px;border:2px solid #fff;border-radius:999px;overflow:hidden;background:rgba(39,31,61,.72);min-width:40px}
+.hud .bar i{display:block;height:100%;width:0;background:var(--gold)}
+.hud button{pointer-events:auto;font:inherit;font-size:15px;color:var(--ink);background:#fff;border:3px solid var(--ink);border-radius:999px;width:38px;height:38px;cursor:pointer;padding:0}
+.badge{width:104px;height:104px;border-radius:50%;background:var(--gold);border:6px solid var(--ink);display:grid;place-items:center;font-family:var(--display);font-size:44px;color:var(--ink);box-shadow:0 0 0 6px var(--pink),0 8px 0 6px var(--ink)}
+</style></head>
+<body>
+<canvas id="cv"></canvas>
+
+<div class="hud" id="hud" hidden>
+  <span class="pill" id="hLv">Level 1</span>
+  <span class="pill pos" id="hPos">6/6</span>
+  <span class="pill" id="hCoins">● 0</span>
+  <div class="bar" title="Matkaa maaliin"><i id="hBar"></i></div>
+  <button id="bMute" aria-label="Äänet päälle tai pois">♪</button>
+  <button id="bPause" aria-label="Tauko">II</button>
+</div>
+
+<section class="screen" id="sMenu">
+  <h1>Auto<span>ralli</span></h1>
+  <p class="credit">Edda suunnitteli tämän pelin</p>
+  <div class="hero"><canvas id="heroCv" width="16" height="16"></canvas><div><b>Salama ihminen</b><span>Osaa ajaa tosi kovaa!</span></div></div>
+  <p class="howto">Aja ohi kaikista autoista ja tule <b>ensimmäisenä maaliin</b>! Ohjaa <b>pyyhkäisemällä</b> sormella tai <b>hiirellä</b> (tai nuolinäppäimillä). <b>Pysy radalla</b>, muuten auto menee rikki. Kerää kolikoita: ne antavat vauhtia!</p>
+  <div class="levels" id="levels"></div>
+  <p class="howto" id="total"></p>
+</section>
+
+<section class="screen" id="sIntro" hidden>
+  <h2 id="iTitle">Level 1</h2>
+  <p id="iText"></p>
+  <button class="btn" id="bGo">Aja!</button>
+</section>
+
+<section class="screen" id="sLose" hidden>
+  <h2 id="lTitle">RÄSÄH!</h2>
+  <p id="lText"></p>
+  <div class="row"><button class="btn" id="bRetry">Yritä uudestaan</button><button class="btn small" data-menu>Levelit</button></div>
+</section>
+
+<section class="screen" id="sDone" hidden>
+  <h2>1. sija!</h2>
+  <div class="badge" id="badge">1</div>
+  <p>Voitit levelin!</p>
+  <p id="doneText"></p>
+  <div class="row"><button class="btn" id="bNext">Seuraava level</button><button class="btn small" data-menu>Levelit</button></div>
+</section>
+
+<section class="screen" id="sWin" hidden>
+  <h1>Voitit<br><span>pelin!</span></h1>
+  <p>Salama ihminen voitti kaikki 10 leveliä. Olet Espanjan paras rallikuski!</p>
+  <p id="winText"></p>
+  <button class="btn" data-menu>Levelit</button>
+</section>
+
+<section class="screen" id="sPause" hidden>
+  <h2>Tauko</h2>
+  <div class="row"><button class="btn" id="bResume">Jatka</button><button class="btn small" data-menu>Levelit</button></div>
+</section>
+
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const HERO_PIX='.0...11111......00..2222221.0....0.122222221......12212221221.....12322222321......121222121........1211121..........12221............111..........111121111.......121444121.......111141111..........111.............151.............111.............121.......',HERO_PAL=["#ffffff","#000000","#f2c19a","#ff5d8f","#e8475f","#2f6fd0"];
+const C={pink:'#ff5d8f',gold:'#ffd23f',blue:'#3fb6ff',mint:'#5fd6a8',ink:'#271f3d'};
+
+/* ========== Salama ihminen (Eddan piirros) ========== */
+const heroImg=document.createElement('canvas');heroImg.width=heroImg.height=16;
+{const x=heroImg.getContext('2d');HERO_PAL&&HERO_PIX.split('').forEach((ch,i)=>{if(ch!=='.'){x.fillStyle=HERO_PAL[parseInt(ch,36)];x.fillRect(i%16,i>>4,1,1)}})}
+$('heroCv').getContext('2d').drawImage(heroImg,0,0);
+
+/* ========== levelit: joka levelissä vaikeampaa ========== */
+// opp = vastustajia, segs = radan pituus, curve = mutkat, width = radan leveys, ai = vastustajien vauhti, lanes = vaihtavatko kaistaa
+const LV=[
+ {opp:3,segs:2000,curve:2,width:2300,ai:[.55,.62],text:'Ensimmäinen kisa Espanjassa! Aja kaikkien ohi ja tule ensimmäisenä maaliin. Pysy mustalla radalla.'},
+ {opp:4,segs:2200,curve:2.5,width:2200,ai:[.58,.66],text:'Neljä autoa kisassa. Muista kerätä kolikoita, ne antavat vauhtia!'},
+ {opp:4,segs:2400,curve:3,width:2150,ai:[.62,.7],text:'Nyt tulee isompia mutkia. Ohjaa ajoissa!'},
+ {opp:5,segs:2600,curve:3.5,width:2100,ai:[.65,.73],lanes:1,text:'Autot vaihtavat kaistaa. Varo!'},
+ {opp:5,segs:2800,curve:4,width:2050,ai:[.68,.76],lanes:1,text:'Viisi nopeaa autoa ja mutkainen rata.'},
+ {opp:6,segs:3000,curve:4.5,width:2000,ai:[.7,.79],lanes:1,text:'Rata kapenee. Pysy keskellä!'},
+ {opp:6,segs:3200,curve:5,width:1950,ai:[.73,.81],lanes:1,text:'Kuusi autoa ja tiukat mutkat.'},
+ {opp:7,segs:3400,curve:5.5,width:1900,ai:[.75,.84],lanes:1,text:'Vastustajat ovat tosi nopeita nyt.'},
+ {opp:8,segs:3600,curve:6,width:1850,ai:[.77,.86],lanes:1,text:'Kahdeksan autoa! Kolikot auttavat ohittamaan.'},
+ {opp:9,segs:3800,curve:6,width:1800,ai:[.79,.88],lanes:1,text:'Viimeinen level! Yhdeksän autoa ja kapein rata. Voita koko peli!'}
+];
+
+/* ========== tallennus ========== */
+let save={unlocked:1,best:{}};
+try{const s=JSON.parse(localStorage.getItem('autoralli')||'null');if(s&&s.unlocked)save=s}catch(_){}
+function store(){try{localStorage.setItem('autoralli',JSON.stringify(save))}catch(_){}}
+
+/* ========== äänet ========== */
+let AC=null,master=null,muted=false,eng=null,engGain=null,noiseBuf=null;
+function audio(){
+  if(AC){if(AC.state==='suspended')AC.resume();return}
+  try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(_){return}
+  master=AC.createGain();master.gain.value=muted?0:.8;master.connect(AC.destination);
+  noiseBuf=AC.createBuffer(1,AC.sampleRate,AC.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+  eng=AC.createOscillator();eng.type='sawtooth';eng.frequency.value=50;const f=AC.createBiquadFilter();f.type='lowpass';f.frequency.value=700;
+  engGain=AC.createGain();engGain.gain.value=0;eng.connect(f).connect(engGain).connect(master);eng.start();
+}
+function tone(freq,dur,type,vol,when,slideTo){
+  if(!AC)return;const t=AC.currentTime+(when||0);const o=AC.createOscillator(),g=AC.createGain();
+  o.type=type||'square';o.frequency.setValueAtTime(freq,t);if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,t+dur);
+  g.gain.setValueAtTime(vol||.15,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g).connect(master);o.start(t);o.stop(t+dur+.02);
+}
+function noise(dur,vol,f0,f1,when){if(!AC)return;const t=AC.currentTime+(when||0),s=AC.createBufferSource(),fl=AC.createBiquadFilter(),g=AC.createGain();
+  s.buffer=noiseBuf;fl.type='lowpass';fl.frequency.setValueAtTime(f0,t);fl.frequency.exponentialRampToValueAtTime(f1,t+dur);
+  g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);s.connect(fl).connect(g).connect(master);s.start(t);s.stop(t+dur+.02)}
+const SFX={
+  coin(){tone(1319,.07,'square',.12);tone(1760,.09,'square',.12,.06);tone(2637,.22,'triangle',.14,.12)}, // mahtava ääni
+  crash(){noise(.9,.7,6000,120);tone(90,.5,'sine',.5,0,40);noise(.3,.4,3000,500,.15);[0,.08,.17,.3].forEach(w=>tone(2000+Math.random()*2000,.05,'square',.06,w))}, // räsähdys
+  bump(){noise(.18,.3,1500,200);tone(140,.15,'square',.12,0,80)},
+  beep(){tone(660,.18,'square',.14)},go(){tone(1320,.45,'square',.16)},
+  pass(){tone(880,.07,'triangle',.1);tone(1175,.1,'triangle',.1,.06)},
+  laugh(){[0,.17,.34,.51,.68].forEach((w,i)=>{tone(520-i*25,.13,'triangle',.18,w,420-i*25);noise(.1,.08,2500,1200,w)})}, // iloista naurua
+  win(){[523,659,784,1047,784,1047,1319].forEach((f,i)=>tone(f,.22,'square',.12,i*.11))},
+  lose(){[392,349,311,262].forEach((f,i)=>tone(f,.3,'triangle',.15,i*.2))}
+};
+
+/* ========== kuvat (piirretään koodilla) ========== */
+function mk(w,h,f){const c=document.createElement('canvas');c.width=w;c.height=h;f(c.getContext('2d'),w,h);return c}
+function rr(x,a,b,w,h,r){x.beginPath();x.roundRect?x.roundRect(a,b,w,h,r):x.rect(a,b,w,h)}
+function carImg(col,dark,player){return mk(220,150,(x)=>{
+  x.lineJoin='round';x.fillStyle='rgba(0,0,0,.28)';x.beginPath();x.ellipse(110,140,104,12,0,0,7);x.fill();
+  x.fillStyle='#16121f';rr(x,12,98,44,46,10);x.fill();rr(x,164,98,44,46,10);x.fill();
+  x.fillStyle=col;rr(x,8,52,204,78,24);x.fill();x.lineWidth=6;x.strokeStyle=C.ink;x.stroke();
+  x.fillStyle=col;rr(x,40,10,140,60,22);x.fill();x.stroke();
+  x.fillStyle='#2b3550';rr(x,54,20,112,40,12);x.fill();
+  if(player){x.imageSmoothingEnabled=false;x.drawImage(heroImg,3,0,10,8,72,14,76,61);x.fillStyle='rgba(120,180,255,.25)';rr(x,54,20,112,40,12);x.fill()}
+  x.fillStyle='rgba(255,255,255,.35)';rr(x,62,24,30,8,4);x.fill();
+  x.fillStyle=dark;rr(x,14,96,192,16,6);x.fill();
+  x.fillStyle='#ff3040';rr(x,18,72,40,18,6);x.fill();x.stroke();rr(x,162,72,40,18,6);x.fill();x.stroke();
+  x.fillStyle='#fff';rr(x,86,96,48,18,4);x.fill();x.lineWidth=3;x.stroke();
+  if(player){x.fillStyle=C.gold;x.beginPath();x.moveTo(118,56);x.lineTo(98,84);x.lineTo(112,84);x.lineTo(102,104);x.lineTo(126,76);x.lineTo(112,76);x.lineTo(122,56);x.closePath();x.fill();x.lineWidth=3;x.stroke()}
+})}
+const PLAYER=carImg(C.pink,'#c23a68',true);
+const OPP_COLS=[['#e8473f','#a92a24'],['#3fbf5f','#2a8a41'],[C.gold,'#c99b12'],[C.blue,'#1f7fc0'],['#8a4fd8','#5d2fa3'],['#ff8a2b','#c25c0a'],['#ffffff','#c7c7d6'],[C.mint,'#2fa57a'],['#222222','#000000']];
+const OPP=OPP_COLS.map(c=>carImg(c[0],c[1]));
+const PALM=mk(200,420,(x)=>{x.strokeStyle='#8a5a2b';x.lineWidth=22;x.lineCap='round';x.beginPath();x.moveTo(104,410);x.quadraticCurveTo(80,250,108,90);x.stroke();
+  x.strokeStyle='#6b4420';x.lineWidth=4;for(let y=380;y>110;y-=26){x.beginPath();x.moveTo(92,y);x.lineTo(118,y-6);x.stroke()}
+  x.fillStyle='#3fae4a';x.strokeStyle='#226b2b';x.lineWidth=4;
+  for(let i=0;i<7;i++){const a=-Math.PI*.95+i*Math.PI/6.4;x.beginPath();x.moveTo(108,90);x.quadraticCurveTo(108+Math.cos(a)*60,90+Math.sin(a)*60-30,108+Math.cos(a)*100,90+Math.sin(a)*100+30);x.quadraticCurveTo(108+Math.cos(a)*50,90+Math.sin(a)*50,108,96);x.fill();x.stroke()}
+  x.fillStyle='#8a5a2b';[[98,98],[116,100]].forEach(p=>{x.beginPath();x.arc(p[0],p[1],8,0,7);x.fill()})});
+const HOUSE_COLS=['#ffd9a8','#ff9fb8','#fff3e0','#ffcf5c','#a8dcff','#e8a07a'];
+const HOUSES=HOUSE_COLS.map((col,i)=>mk(300,i%2?420:330,(x,w,h)=>{
+  x.fillStyle=col;x.fillRect(10,30,w-20,h-30);x.lineWidth=6;x.strokeStyle=C.ink;x.strokeRect(10,30,w-20,h-30);
+  x.fillStyle='#c4572f';x.fillRect(0,18,w,22);x.strokeRect(0,18,w,22);
+  for(let y=60;y<h-90;y+=72)for(let xx=36;xx<w-60;xx+=82){x.fillStyle='#2b3550';rr(x,xx,y,46,52,[23,23,4,4]);x.fill();x.fillStyle='#5aa7d6';rr(x,xx+6,y+6,34,40,[17,17,2,2]);x.fill();
+    x.strokeStyle=C.ink;x.lineWidth=4;x.beginPath();x.moveTo(xx-6,y+54);x.lineTo(xx+52,y+54);x.stroke();for(let b=xx-4;b<xx+52;b+=10){x.beginPath();x.moveTo(b,y+54);x.lineTo(b,y+68);x.stroke()}}
+  x.fillStyle='#8a5a2b';rr(x,w/2-26,h-80,52,80,[26,26,0,0]);x.fill();x.lineWidth=4;x.stroke();
+  x.fillStyle=['#e8473f','#3fbf5f','#3fb6ff'][i%3];for(let k=0;k<5;k++){x.beginPath();x.moveTo(20+k*55,h-96);x.lineTo(48+k*55,h-96);x.lineTo(34+k*55,h-80);x.fill()}
+}));
+const FLAG=mk(120,260,(x)=>{x.fillStyle='#ddd';x.fillRect(8,10,8,250);x.fillStyle='#c60b1e';x.fillRect(16,14,100,72);x.fillStyle='#ffc400';x.fillRect(16,32,100,36);x.lineWidth=4;x.strokeStyle=C.ink;x.strokeRect(16,14,100,72)});
+const ARCH=mk(1000,420,(x,w)=>{x.fillStyle='#ddd';x.fillRect(20,60,40,360);x.fillRect(w-60,60,40,360);x.lineWidth=6;x.strokeStyle=C.ink;x.strokeRect(20,60,40,360);x.strokeRect(w-60,60,40,360);
+  for(let i=0;i<20;i++)for(let j=0;j<3;j++){x.fillStyle=(i+j)%2?'#fff':'#111';x.fillRect(20+i*48,10+j*20,48,20)}
+  x.fillStyle=C.pink;x.fillRect(150,70,700,90);x.strokeRect(150,70,700,90);x.fillStyle='#fff';x.font='bold 70px Bungee, Arial Black, sans-serif';x.textAlign='center';x.fillText('MAALI',w/2,140)});
+const COIN=mk(80,80,(x)=>{x.fillStyle=C.gold;x.beginPath();x.arc(40,40,34,0,7);x.fill();x.lineWidth=6;x.strokeStyle=C.ink;x.stroke();x.fillStyle='#fff3b0';x.beginPath();x.arc(32,32,10,0,7);x.fill();x.fillStyle='#d99c00';x.font='bold 34px Arial Black, sans-serif';x.textAlign='center';x.fillText('€',42,52)});
+let SKY=null;
+function makeSky(){SKY=mk(1600,260,(x,w,h)=>{
+  for(let i=0;i<46;i++){const bw=40+Math.random()*80,bh=60+Math.random()*190,bx=i*36,col=['#7fa7d8','#8fb5e0','#6f97c9','#9cc0e8'][i%4];x.fillStyle=col;x.fillRect(bx,h-bh,bw,bh);
+    x.fillStyle='rgba(255,255,255,.35)';for(let wy=h-bh+10;wy<h-10;wy+=18)for(let wx=bx+8;wx<bx+bw-8;wx+=16)x.fillRect(wx,wy,7,9)}
+  x.fillStyle='#6f97c9';x.fillRect(700,h-250,30,250);x.beginPath();x.moveTo(690,h-250);x.lineTo(715,h-300);x.lineTo(740,h-250);x.fill(); // tornit
+  x.fillRect(780,h-230,30,230);x.beginPath();x.moveTo(770,h-230);x.lineTo(795,h-280);x.lineTo(820,h-230);x.fill();
+  for(let i=0;i<14;i++){const px=40+i*115;x.drawImage(PALM,px,h-120,58,122)}
+})}
+
+/* ========== 3D-rata ========== */
+const cv=$('cv'),ctx=cv.getContext('2d');
+let W=0,H=0,DPR=1;
+function resize(){DPR=Math.min(2,window.devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR}
+addEventListener('resize',resize);
+const SEG=200,DRAW=170,CAM_H=1000,FOV=100,DEPTH=1/Math.tan(FOV/2*Math.PI/180),PLAYER_Z=CAM_H*DEPTH,MAXV=SEG*60,LANES=3;
+let segs=[],trackLen=0,roadW=2000,finishZ=0;
+let mode='menu',lvl=1,pos=0,speed=0,px=0,steer=0,cars=[],coins=0,rank=1,boost=0,t=0,count=0,crashT=0,spin=0,skyX=0,parts=[],floats=[],shake=0,lastRank=9,bumpT=0;
+
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function ease(a,b,p){return a+(b-a)*((-Math.cos(p*Math.PI)/2)+.5)}
+function build(n){
+  const P=LV[n-1],r=rng(n*131+7);segs=[];roadW=P.width;
+  const add=(curve)=>{const i=segs.length;segs.push({i,z1:i*SEG,z2:(i+1)*SEG,curve,spr:[],cars:[],coin:[],dark:Math.floor(i/3)%2})};
+  const road=(enter,hold,leave,c)=>{for(let i=0;i<enter;i++)add(ease(0,c,i/enter));for(let i=0;i<hold;i++)add(c);for(let i=0;i<leave;i++)add(ease(c,0,i/leave))};
+  road(0,60,0,0);
+  while(segs.length<P.segs){const k=r();const len=[25,40,60][Math.floor(r()*3)];
+    if(k<.25)road(20,len,20,0);else road(Math.floor(15+r()*25),len,Math.floor(15+r()*25),(r()<.5?-1:1)*P.curve*(.5+r()*.5))}
+  finishZ=P.segs*SEG;
+  road(0,DRAW+60,0,0);
+  trackLen=segs.length*SEG;
+  // maisema: palmut, talot, liput
+  for(let i=8;i<segs.length;i++){
+    if(i%6===0){segs[i].spr.push({img:PALM,w:900,off:-1.35,al:-.5});segs[i].spr.push({img:PALM,w:900,off:1.35,al:-.5})}
+    if(i%18===3)segs[i].spr.push({img:HOUSES[Math.floor(r()*HOUSES.length)],w:3000,off:-1.75,al:-1});
+    if(i%18===12)segs[i].spr.push({img:HOUSES[Math.floor(r()*HOUSES.length)],w:3000,off:1.75,al:0});
+    if(i%40===20)segs[i].spr.push({img:FLAG,w:600,off:(r()<.5?-1:1)*1.2,al:-.5});
+  }
+  const fi=Math.floor(finishZ/SEG);segs[fi].finish=1;segs[fi].spr.push({img:ARCH,w:roadW*2.9,off:0,al:-.5,arch:1});
+  const si=Math.floor(PLAYER_Z/SEG)+1;segs[si].start=1;
+  // kolikot riveissä
+  for(let i=120;i<fi-40;i+=Math.floor(70+r()*50)){const lane=[-.62,0,.62][Math.floor(r()*3)];for(let k=0;k<5;k++)segs[i+k*4].coin.push({off:lane,got:false})}
+  // vastustajat: lähtevät edeltä
+  cars=[];const aiMax=P.ai[1],D=.42*(1-aiMax)*finishZ;
+  for(let k=0;k<P.opp;k++){const z=PLAYER_Z+SEG*6+(k+1)/P.opp*D,lane=[-.62,0,.62][k%3];
+    cars.push({z,off:lane,tgt:lane,v:MAXV*(P.ai[0]+(P.ai[1]-P.ai[0])*(k/(Math.max(1,P.opp-1)))),img:OPP[k%OPP.length],passed:false,lc:2+r()*4})}
+}
+function segAt(z){return segs[Math.max(0,Math.min(segs.length-1,Math.floor(z/SEG)))]}
+
+function project(p,camX,camY,camZ){const cz=p.z-camZ,s=DEPTH/cz;return{x:Math.round(W/2+s*(p.x-camX)*W/2),y:Math.round(H/2-s*(0-camY)*H/2),w:Math.round(s*roadW*W/2),s,cz}}
+function poly(x1,y1,x2,y2,x3,y3,x4,y4,col){ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.lineTo(x3,y3);ctx.lineTo(x4,y4);ctx.closePath();ctx.fill()}
+function drawSeg(s,a,b){
+  const d=s.dark;
+  ctx.fillStyle=d?'#e3d2a8':'#efe0b8';ctx.fillRect(0,b.y-1,W,a.y-b.y+2); // jalkakäytävä
+  const r1=a.w/6,r2=b.w/6;
+  poly(a.x-a.w-r1,a.y,a.x-a.w,a.y,b.x-b.w,b.y,b.x-b.w-r2,b.y,d?'#fff':'#e8473f');
+  poly(a.x+a.w+r1,a.y,a.x+a.w,a.y,b.x+b.w,b.y,b.x+b.w+r2,b.y,d?'#fff':'#e8473f');
+  if(s.finish||s.start){const n=12;for(let k=0;k<n;k++){const f1=-1+2*k/n,f2=-1+2*(k+1)/n;for(let h=0;h<2;h++){const ya=a.y+(b.y-a.y)*h/2,yb=a.y+(b.y-a.y)*(h+1)/2;const wa=a.w+(b.w-a.w)*h/2,wb=a.w+(b.w-a.w)*(h+1)/2,xa=a.x+(b.x-a.x)*h/2,xb=a.x+(b.x-a.x)*(h+1)/2;
+    poly(xa+wa*f1,ya,xa+wa*f2,ya,xb+wb*f2,yb,xb+wb*f1,yb,(k+h)%2?'#fff':'#111')}}return}
+  poly(a.x-a.w,a.y+1,a.x+a.w,a.y+1,b.x+b.w,b.y-1,b.x-b.w,b.y-1,d?'#34303f':'#3b3747'); // iso musta rata
+  if(d){const l1=a.w/32,l2=b.w/32;for(let k=1;k<LANES;k++){const f=-1+2*k/LANES;poly(a.x+a.w*f-l1,a.y,a.x+a.w*f+l1,a.y,b.x+b.w*f+l2,b.y,b.x+b.w*f-l2,b.y,'#f4f1e8')}}
+}
+function drawSprite(img,worldW,s,x,y,al,clip){
+  const dw=worldW*s*W/2,dh=dw*img.height/img.width,dx=x+dw*al,dy=y-dh;
+  const ch=clip?Math.max(0,dy+dh-clip):0;if(ch>=dh||dw<1)return;
+  ctx.drawImage(img,0,0,img.width,img.height-img.height*ch/dh,dx,dy,dw,dh-ch);
+}
+function render(){
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  let sx=0;if(shake>0){sx=(Math.random()-.5)*shake;ctx.translate(sx,(Math.random()-.5)*shake)}
+  // taivas ja kaupunki
+  const g=ctx.createLinearGradient(0,0,0,H/2);g.addColorStop(0,'#3fb6ff');g.addColorStop(1,'#bfe6ff');ctx.fillStyle=g;ctx.fillRect(-20,-20,W+40,H/2+22);
+  ctx.fillStyle='#fff3a0';ctx.beginPath();ctx.arc(W*.8,H*.13,Math.min(W,H)*.06,0,7);ctx.fill();
+  if(!SKY)makeSky();const sh=Math.min(H*.28,SKY.height*(W/900)),sw=SKY.width*sh/SKY.height;let ox=((skyX%sw)+sw)%sw;
+  for(let xx=-ox;xx<W;xx+=sw)ctx.drawImage(SKY,xx,H/2-sh+2,sw,sh);
+  ctx.fillStyle='#e3d2a8';ctx.fillRect(-20,H/2,W+40,H/2+20);
+  if(!segs.length)return;
+  const base=segAt(pos),bp=(pos%SEG)/SEG;let x=0,dx=-(base.curve*bp),maxy=H;
+  const vis=[];
+  for(let n=0;n<DRAW;n++){const s=segs[base.i+n];if(!s)break;
+    const a=project({x:0,z:s.z1},px*roadW-x,CAM_H,pos),b=project({x:0,z:s.z2},px*roadW-x-dx,CAM_H,pos);
+    x+=dx;dx+=s.curve;s.a=a;s.b=b;s.clip=maxy;
+    if(a.cz<=DEPTH||b.y>=a.y||b.y>=maxy){s.vis=false;continue}
+    s.vis=true;drawSeg(s,a,b);maxy=b.y;vis.push(s)}
+  for(let n=Math.min(DRAW,segs.length-base.i)-1;n>0;n--){const s=segs[base.i+n];if(!s||!s.a||s.a.cz<=DEPTH)continue;
+    for(const sp of s.spr){drawSprite(sp.img,sp.w,s.a.s,s.a.x+s.a.s*sp.off*roadW*W/2,s.a.y,sp.al,s.clip)}
+    for(const c of s.coin)if(!c.got)drawSprite(COIN,340,s.a.s,s.a.x+s.a.s*c.off*roadW*W/2,s.a.y-s.a.s*120*H/2*0,-.5,s.clip);
+    for(const c of s.cars){const p=(c.z%SEG)/SEG,sc=s.a.s+(s.b.s-s.a.s)*p,xx=s.a.x+(s.b.x-s.a.x)*p,yy=s.a.y+(s.b.y-s.a.y)*p;drawSprite(c.img,600,sc,xx+sc*c.off*roadW*W/2,yy,-.5,s.clip)}}
+  // oma auto
+  const cw=Math.min(W*.34,H*.42),chh=cw*PLAYER.height/PLAYER.width,bounce=(speed>0&&mode==='play')?Math.sin(t*30)*1.5:0;
+  ctx.save();ctx.translate(W/2,H-chh*.62-12+bounce);ctx.rotate(spin+steer*.06);ctx.drawImage(PLAYER,-cw/2,-chh/2,cw,chh);ctx.restore();
+  for(const p of parts){ctx.globalAlpha=Math.max(0,Math.min(1,p.life*2));ctx.fillStyle=p.col;if(p.conf){ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.r);ctx.fillRect(-5,-3,10,6);ctx.restore()}else{ctx.beginPath();ctx.arc(p.x,p.y,p.sz,0,7);ctx.fill()}}
+  ctx.globalAlpha=1;ctx.textAlign='center';ctx.lineJoin='round';
+  for(const f of floats){ctx.globalAlpha=Math.min(1,f.life*2);ctx.font='400 '+f.size+'px Bungee,"Arial Black",sans-serif';ctx.lineWidth=7;ctx.strokeStyle=C.ink;ctx.strokeText(f.text,f.x,f.y);ctx.fillStyle=f.col;ctx.fillText(f.text,f.x,f.y)}
+  ctx.globalAlpha=1;
+  if(mode==='count'){const n=Math.ceil(count);const txt=n>0?String(n):'AJA!';ctx.font='400 '+Math.min(W,H)*.22+'px Bungee,"Arial Black",sans-serif';ctx.lineWidth=12;ctx.strokeStyle=C.ink;ctx.strokeText(txt,W/2,H*.42);ctx.fillStyle=n>0?C.gold:C.mint;ctx.fillText(txt,W/2,H*.42)}
+}
+
+/* ========== peli ========== */
+function show(id){['sMenu','sIntro','sLose','sDone','sWin','sPause'].forEach(s=>$(s).hidden=s!==id)}
+function menu(){
+  mode='menu';$('hud').hidden=true;show('sMenu');if(engGain)engGain.gain.value=0;
+  build(1);pos=SEG*10;px=0;speed=0;const box=$('levels');box.innerHTML='';let badges=0,tot=0;
+  for(let n=1;n<=10;n++){const b=document.createElement('button');b.className='lv';b.textContent=n;
+    const best=save.best[n];if(best!==undefined){b.classList.add('done');badges++;tot+=best;b.insertAdjacentHTML('beforeend','<small>● '+best+'</small>')}
+    b.disabled=n>save.unlocked;b.setAttribute('aria-label','Level '+n);b.onclick=()=>{audio();intro(n)};box.appendChild(b)}
+  $('total').textContent=badges?('Pokaaleja '+badges+'/10 · kolikoita yhteensä '+tot):'';
+}
+function intro(n){lvl=n;build(n);pos=0;px=0;speed=0;$('iTitle').textContent='Level '+n;$('iText').textContent=LV[n-1].text;show('sIntro');mode='intro';$('hud').hidden=true}
+function startLevel(n){
+  lvl=n;build(n);pos=0;px=0;speed=0;steer=0;coins=0;boost=0;t=0;count=3.4;crashT=0;spin=0;parts=[];floats=[];shake=0;bumpT=0;lastRank=cars.length+1;
+  touch.down=false;keys={};mouse.on=false;
+  show(null);$('hud').hidden=false;$('hLv').textContent='Level '+n;mode='count';audio();lastBeep=4;
+}
+let lastBeep=4;
+function crash(){
+  if(mode!=='play')return;mode='crash';crashT=0;SFX.crash();shake=26;speed*=.3;
+  for(let i=0;i<40;i++){const a=Math.random()*7,s=100+Math.random()*400;parts.push({x:W/2,y:H*.82,vx:Math.cos(a)*s,vy:Math.sin(a)*s-200,life:.6+Math.random()*.8,col:['#ffd23f','#ff8a2b','#fff','#888'][i%4],sz:3+Math.random()*6,g:1})}
+  floats.push({x:W/2,y:H*.45,text:'RÄSÄH!',col:'#ff6b6b',life:1.6,size:Math.min(W,H)*.13});
+  if(engGain)engGain.gain.value=0;
+  setTimeout(()=>{if(mode==='crash'){$('lTitle').textContent='RÄSÄH!';$('lText').textContent='Auto meni rikki, kun se ajoi pois radalta. Aloitat tämän levelin alusta.';show('sLose')}},1500);
+}
+function finish(){
+  if(engGain)engGain.gain.value=0;
+  if(rank===1){mode='done';SFX.win();setTimeout(SFX.laugh,700);
+    for(let i=0;i<160;i++)parts.push({x:Math.random()*W,y:-20-Math.random()*H*.5,vx:(Math.random()-.5)*120,vy:100+Math.random()*200,life:3+Math.random()*2,col:[C.pink,C.gold,C.blue,C.mint,'#fff','#e8473f'][i%6],conf:1,r:Math.random()*6,vr:(Math.random()-.5)*10});
+    const prev=save.best[lvl];if(prev===undefined||coins>prev)save.best[lvl]=coins;save.unlocked=Math.max(save.unlocked,Math.min(10,lvl+1));store();
+    if(lvl===10){setTimeout(()=>{const tot=Object.values(save.best).reduce((a,b)=>a+b,0);$('winText').textContent='Kolikoita kaikista leveleistä yhteensä: '+tot;show('sWin');$('hud').hidden=true;mode='win'},2600);return}
+    setTimeout(()=>{$('badge').textContent=lvl;$('doneText').textContent='Keräsit '+coins+' kolikkoa.';show('sDone');$('hud').hidden=true},2400)}
+  else{mode='lose';SFX.lose();setTimeout(()=>{$('lTitle').textContent=rank+'. sija';$('lText').textContent='Pitää tulla ensimmäisenä maaliin. '+(rank-1>1?(rank-1)+' autoa oli':'Yksi auto oli')+' vielä edellä. Aloitat tämän levelin alusta.';show('sLose')},900)}
+}
+
+/* ========== ohjaus: pyyhkäisy, hiiri, nuolet ========== */
+const touch={down:false,x0:0,x:0,id:null},mouse={on:false,x:0};let keys={};
+cv.addEventListener('pointerdown',e=>{audio();if(e.pointerType==='mouse'){mouse.on=true;mouse.x=e.clientX;return}
+  touch.down=true;touch.id=e.pointerId;touch.x0=touch.x=e.clientX;e.preventDefault()});
+cv.addEventListener('pointermove',e=>{if(e.pointerType==='mouse'){mouse.on=true;mouse.x=e.clientX;return}if(touch.down&&e.pointerId===touch.id)touch.x=e.clientX});
+const tu=e=>{if(e.pointerId===touch.id)touch.down=false};cv.addEventListener('pointerup',tu);cv.addEventListener('pointercancel',tu);
+cv.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse')mouse.on=false});
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+addEventListener('keydown',e=>{keys[e.key]=true;if(['ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();
+  if(e.key===' '||e.key==='Enter'){audio();if(mode==='intro'){startLevel(lvl);return}if(mode==='crash'||(mode==='lose'&&!$('sLose').hidden)){startLevel(lvl);return}}
+  if(e.key==='Escape'||e.key==='p'||e.key==='P')togglePause()});
+addEventListener('keyup',e=>{keys[e.key]=false});
+function readSteer(){
+  if(keys.ArrowLeft||keys.a||keys.A)return -1;if(keys.ArrowRight||keys.d||keys.D)return 1;
+  if(touch.down){let v=(touch.x-touch.x0)/(W*.2);if(Math.abs(touch.x-touch.x0)<8){if(touch.x0<W*.3)v=-.8;else if(touch.x0>W*.7)v=.8}return Math.max(-1,Math.min(1,v))}
+  if(mouse.on){const v=(mouse.x-W/2)/(W*.3);return Math.abs(v)<.06?0:Math.max(-1,Math.min(1,v))}
+  return 0}
+function togglePause(){if(mode==='play'||mode==='count'){pmode=mode;mode='pause';show('sPause');if(engGain)engGain.gain.value=0}else if(mode==='pause'){mode=pmode;show(null);lastT=performance.now()}}
+let pmode='play';
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&(mode==='play'||mode==='count'))togglePause()});
+$('bPause').onclick=togglePause;$('bResume').onclick=togglePause;
+$('bMute').onclick=()=>{muted=!muted;$('bMute').style.opacity=muted?.4:1;if(master)master.gain.value=muted?0:.8};
+$('bGo').onclick=()=>startLevel(lvl);
+$('bRetry').onclick=()=>startLevel(lvl);
+$('bNext').onclick=()=>intro(Math.min(10,lvl+1));
+document.querySelectorAll('[data-menu]').forEach(b=>b.onclick=menu);
+
+/* ========== päivitys ========== */
+let steerInput=null; // testaukseen
+function update(dt){
+  for(const p of parts){p.x+=p.vx*dt;p.y+=p.vy*dt;if(p.g)p.vy+=600*dt;if(p.conf){p.r+=p.vr*dt;p.vx+=Math.sin(p.y/30)*20*dt}p.life-=dt}
+  parts=parts.filter(p=>p.life>0&&p.y<H+40);for(const f of floats){f.y-=40*dt;f.life-=dt}floats=floats.filter(f=>f.life>0);
+  if(shake>0)shake=Math.max(0,shake-dt*40);
+  if(mode==='count'){count-=dt;const n=Math.ceil(count);if(n<lastBeep&&n>=0){lastBeep=n;n>0?SFX.beep():SFX.go()}if(count<=0){mode='play';t=0}}
+  if(mode==='crash'){crashT+=dt;spin+=dt*9*Math.max(0,1-crashT);pos+=speed*dt;speed*=Math.pow(.2,dt);return}
+  if(mode==='done'){pos+=speed*dt;speed*=Math.pow(.4,dt);px*=Math.pow(.3,dt);return}
+  if(mode!=='play')return;
+  t+=dt;const P=LV[lvl-1];
+  // vauhti
+  const top=MAXV*(boost>0?1.18:1);
+  if(speed<top)speed=Math.min(top,speed+MAXV/2.6*dt);else speed=Math.max(top,speed-MAXV*.5*dt);
+  if(boost>0)boost-=dt;if(bumpT>0)bumpT-=dt;
+  pos+=speed*dt;
+  const ps=segAt(pos+PLAYER_Z),sp=speed/MAXV;
+  // ohjaus ja mutkien keskipakovoima
+  const want=steerInput!==null?steerInput:readSteer();steer+=(want-steer)*Math.min(1,dt*10);
+  px+=dt*2*sp*steer*1.25;px-=dt*2*sp*sp*ps.curve*.13;
+  skyX+=ps.curve*sp*dt*30;
+  if(Math.abs(px)>1.1)return crash();
+  // kolikot
+  for(let k=-1;k<=1;k++){const s=segs[ps.i+k];if(!s)continue;for(const c of s.coin)if(!c.got&&Math.abs(c.off-px)<.3){c.got=true;coins++;boost=1.1;SFX.coin();
+    floats.push({x:W/2,y:H*.62,text:'+1',col:C.gold,life:.9,size:34});for(let i=0;i<10;i++){const a=Math.random()*7;parts.push({x:W/2,y:H*.7,vx:Math.cos(a)*200,vy:Math.sin(a)*200,life:.5,col:C.gold,sz:4})}}}
+  // vastustajat
+  const pz=pos+PLAYER_Z;
+  for(const s of segs)if(s.cars.length)s.cars.length=0;
+  for(const c of cars){
+    if(P.lanes){c.lc-=dt;if(c.lc<=0){c.lc=2.5+Math.random()*4;c.tgt=[-.62,0,.62][Math.floor(Math.random()*3)]}}
+    // väistää vähän jos takana on auto
+    c.off+=(c.tgt-c.off)*Math.min(1,dt*1.5);
+    const v=c.z<finishZ+SEG*30?c.v:c.v*.3;c.z+=v*dt;
+    // törmäys omaan autoon
+    const dz=c.z-pz;
+    if(dz>0&&dz<SEG*1.2&&Math.abs(c.off-px)<.42&&speed>c.v){speed=Math.max(c.v*.85,speed*.55);boost=0;if(bumpT<=0){SFX.bump();bumpT=.4;shake=8;floats.push({x:W/2,y:H*.55,text:'TÖKS!',col:'#fff',life:.7,size:30})}c.z=pz+SEG*1.2}
+    segAt(c.z).cars.push(c);
+  }
+  rank=1+cars.filter(c=>c.z>pz).length;
+  if(rank<lastRank){SFX.pass();floats.push({x:W/2,y:H*.35,text:rank+'. sija!',col:C.mint,life:1,size:40})}lastRank=rank;
+  $('hPos').textContent=rank+'/'+(cars.length+1);$('hCoins').textContent='● '+coins;$('hBar').style.width=Math.min(100,pos/(finishZ-PLAYER_Z)*100)+'%';
+  if(engGain){eng.frequency.setTargetAtTime(45+sp*90+(boost>0?20:0),AC.currentTime,.05);engGain.gain.setTargetAtTime(.05,AC.currentTime,.1)}
+  if(pz>=finishZ)finish();
+}
+
+/* ========== silmukka ========== */
+let lastT=0;
+function loop(now){const dt=Math.min(.05,(now-lastT)/1000||0);lastT=now;if(mode!=='pause')update(dt);render();requestAnimationFrame(loop)}
+resize();menu();
+requestAnimationFrame(loop);
+</script>
+</body></html>
